@@ -1,0 +1,8 @@
+{
+  "name": "zx2d10-pet-assets",
+  "private": true,
+  "type": "module",
+  "description": "Génération des images du chien et de la cour (SVG -> pixels LVGL RGB565)",
+  "scripts": { "gen": "node gen.mjs" },
+  "dependencies": { "@resvg/resvg-js": "2.6.2" }
+}

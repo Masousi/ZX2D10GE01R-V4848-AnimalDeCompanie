@@ -1,0 +1,55 @@
+# ⚫ AJOUTÉ (24/10/2026) : valeurs matérielles ZX2D10 (ESP32-S3 N16R8) réappliquées si sdkconfig est régénéré
+# (ex. 'Set Espressif Device Target' / idf.py set-target a remis PSRAM off, flash 2MB, partitions par défaut => écran noir)
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_lvgl.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions_lvgl.csv"
+# CONFIG_APP_DEMO_RUN_MUSIC=y
+# ⚫ MODIFIÉ (24/10/2026) : menu principal (toutes les démos) par défaut ; une démo seule se choisit dans
+# menuconfig > ZX2D10 Demo > Demo to run
+# CONFIG_APP_DEMO_RUN_MENU=y
+# ⚫ RETIRÉ (24/10/2026) : plus de démo (firmware "Animal de compagnie", menuconfig > Animal de compagnie)
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y
+CONFIG_ESP32S3_DATA_CACHE_64KB=y
+CONFIG_LV_COLOR_DEPTH_16=y
+# CONFIG_LV_MEM_SIZE_KILOBYTES=64
+# ⚫ 24/10/2026 : LVGL alloue via malloc (heap ESP-IDF + 7,6 Mo de PSRAM) au lieu d'un tas fixe de 64 Ko :
+# la démo Widgets en 480x480 dépassait 64 Ko -> LV_ASSERT_MALLOC -> boucle infinie silencieuse -> écran noir
+CONFIG_LV_MEM_CUSTOM=y
+# ⚫ 24/10/2026 : logs LVGL (WARN+) sur le port série, pour ne plus avoir de blocage silencieux
+CONFIG_LV_USE_LOG=y
+CONFIG_LV_LOG_LEVEL_WARN=y
+CONFIG_LV_LOG_PRINTF=y
+CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM=y
+CONFIG_LV_FONT_MONTSERRAT_12=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_16=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_USE_FONT_COMPRESSED=y
+# ⚫ RETIRÉ (24/10/2026) : démos LVGL désactivées (firmware "Animal de compagnie")
+# CONFIG_LV_USE_DEMO_WIDGETS=y
+# CONFIG_LV_USE_DEMO_KEYPAD_AND_ENCODER=y
+# CONFIG_LV_USE_DEMO_BENCHMARK=y
+# CONFIG_LV_DEMO_BENCHMARK_RGB565A8=y
+# CONFIG_LV_USE_DEMO_STRESS=y
+# CONFIG_LV_USE_DEMO_MUSIC=y
+# CONFIG_LV_DEMO_MUSIC_SQUARE=y
+CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240=y
+# ⚫ 24/10/2026 : nécessaire aux widgets semi-transparents (opa / transform) des démos Music et Benchmark :
+# (⚫ 24/10/2026 : conservé, l'animal utilise aussi des objets semi-transparents)
+# sans cela LVGL logue "Rendering this widget needs LV_COLOR_SCREEN_TRANSP 1" et ne les dessine pas
+CONFIG_LV_COLOR_SCREEN_TRANSP=y
+# ⚫ AJOUTÉ (25/10/2026) : écran qui se décale après une écriture flash (sauvegarde NVS) : ISR LCD en IRAM +
+# redémarrage du DMA à chaque VSYNC (avec les bounce buffers de main/screen.c)
+CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
+CONFIG_LCD_RGB_RESTART_IN_VSYNC=y

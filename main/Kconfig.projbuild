@@ -1,0 +1,47 @@
+# ⚫ MODIFIÉ (24/10/2026) : firmware "Animal de compagnie" (type Tamagotchi).
+# ⚫ RETIRÉ (24/10/2026) : menu "ZX2D10 Demo" (choix "Demo to run" : Main menu / Widgets / Keypad and encoder /
+# Benchmark / Stress / Music / LED animations, APP_MENU_BACK_HOLD_MS, APP_WIDGETS_AUTOPLAY_MS,
+# APP_ENCODER_LED_IDLE_S) : plus aucune démo dans ce firmware.
+menu "Animal de compagnie"
+
+    config PET_NAME
+        string "Nom de l'animal"
+        default "Kiko"
+        help
+            Nom affiché en haut de l'écran (12 caractères max conseillés).
+
+    config PET_TIME_SCALE
+        int "Accélération du temps (1 = temps réel)"
+        range 1 120
+        default 1
+        help
+            Multiplie la vitesse à laquelle l'animal a faim, se fatigue, s'ennuie et grandit.
+            Pratique pour tester (ex. 30 : une heure passe en 2 minutes).
+
+    config PET_SAVE_PERIOD_S
+        int "Sauvegarde en flash toutes les N secondes"
+        range 10 3600
+        default 60
+        help
+            L'état est aussi sauvegardé après chaque action. Il est rechargé au démarrage.
+
+    # ⚫ 24/10/2026 : reprise des réglages de l'ancien menu "Encoder LED ring" (APP_ENCODER_LED_*)
+    menu "Anneau de LED (état de l'animal)"
+        config PET_LED_COUNT
+            int "Nombre de LED"
+            range 1 64
+            default 13
+        config PET_LED_REVERSE
+            bool "Sens inversé"
+            default n
+            help
+                À cocher si la jauge tourne dans le sens inverse du bouton.
+        config PET_LED_BRIGHTNESS
+            int "Luminosité max (1-255)"
+            range 1 255
+            # ⚫ 24/10/2026 : l'anneau reste allumé en permanence : 160 limite le courant
+            # (13 LED blanches à 100 % ≈ 0,8 A, trop pour certains ports USB)
+            default 160
+    endmenu
+
+endmenu
