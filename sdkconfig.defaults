@@ -53,3 +53,5 @@ CONFIG_LV_COLOR_SCREEN_TRANSP=y
 # redémarrage du DMA à chaque VSYNC (avec les bounce buffers de main/screen.c)
 CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
 CONFIG_LCD_RGB_RESTART_IN_VSYNC=y
+# ⚫ AJOUTÉ (25/10/2026) : app_main initialise l'écran et LVGL (screen_init) : pile de 8 Ko comme la tâche LVGL
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192

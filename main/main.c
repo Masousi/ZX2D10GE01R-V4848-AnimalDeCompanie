@@ -53,7 +53,8 @@ void lvgl_task(void* arg) {
     // ⚫ AJOUTÉ (24/10/2026) : screen_init() alloue le frame buffer RGB 480x480 en PSRAM.
     // Si CONFIG_SPIRAM est désactivé (sdkconfig régénéré), l'allocation échoue -> panic -> écran noir.
     // Les valeurs requises sont figées dans sdkconfig.defaults.
-    screen_init();
+    // screen_init();
+    // ⚫ MODIFIÉ (25/10/2026) : screen_init() est appelé par app_main (cœur 0), voir plus bas
 
     // Tick interface for LVGL
     const esp_timer_create_args_t periodic_timer_args = {
@@ -78,6 +79,9 @@ void lvgl_task(void* arg) {
 // ⚫ AJOUTÉ (24/10/2026) : app_main rend la main tout de suite ; LVGL tourne dans sa propre tâche sur le cœur 1
 void app_main(void) {
     nvs_init();
+    // ⚫ AJOUTÉ (25/10/2026) : écran initialisé ici, sur le cœur 0 : l'interruption de l'écran (recopie des
+    // bounce buffers depuis la PSRAM) est attachée au cœur qui crée le panneau ; LVGL garde le cœur 1 pour lui.
+    screen_init();
     pet_led_start();   // ⚫ AJOUTÉ (24/10/2026) : anneau de LED WS2812 (tâche sur le cœur 0)
     xTaskCreatePinnedToCore(lvgl_task, NULL, 8 * 1024, NULL, 5, NULL, 1);
 }

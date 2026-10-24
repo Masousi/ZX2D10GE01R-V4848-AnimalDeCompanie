@@ -72,7 +72,8 @@ ZX2D10GE01R base on https://github.com/espressif/esp-idf/tree/release/v5.0
   quand tout va bien. Jouer donne faim et soif.
 - Il fait des **bêtises** au hasard, d'autant plus souvent que sa discipline est basse : il faut le gronder ou le punir.
 - S'il pleure et que personne ne le console pendant 2 min, il boude (bonheur −10).
-- L'état est **sauvegardé en flash** (NVS) après chaque action et toutes les 60 s : on le retrouve après un redémarrage.
+- L'état est **sauvegardé en flash** (NVS) 2 s après une action (les appuis rapprochés sont regroupés) et toutes
+  les 60 s : on le retrouve après un redémarrage. <!-- ⚫ MODIFIÉ (25/10/2026) : était « après chaque action » -->
 
 ### L'anneau de LED
 
@@ -106,6 +107,8 @@ extinction indigo (s'endort), lever de soleil (réveil), double clignotement amb
 | *Anneau de LED → Luminosité max* | 160 | luminosité maximale (l'anneau reste allumé en permanence) |
 
 Pour repartir avec un **nouvel animal** : `idf.py -p COM4 erase-flash` puis reflasher (efface la sauvegarde NVS).
+<!-- ⚫ AJOUTÉ (25/10/2026) -->
+Flasher l'image complète `firmware/ZX2D10GE01R_pet.bin` à `0x0` efface aussi la sauvegarde ; `idf.py flash` la conserve.
 
 ## Compiler et flasher
 
@@ -128,7 +131,7 @@ PET_UI: Chien prêt (Kiko), 63 images
 Chaque action est tracée : `PET: Action <n> -> <message> (faim …, soif …, énergie …, joie …, discipline …, santé …)`.
 
 <!-- ⚫ AJOUTÉ (25/10/2026) -->
-Toutes les 10 s : `RGB: <n> images/s, rendu <t> ms/image` (≈ 25 images/s attendues).
+Toutes les 10 s : `RGB: <n> images/s, rendu <t> ms/image` (≈ 20 à 27 images/s selon l'animation).
 
 Firmware prêt à flasher : voir [`firmware/`](firmware/README.md). Avec les images, l'application fait ~4 Mo :
 compter ~50 s de flash à 921 600 bauds (`idf.py -p COM4 -b 921600 flash`).
@@ -140,7 +143,10 @@ compter ~50 s de flash à 921 600 bauds (`idf.py -p COM4 -b 921600 flash`).
 | Écran noir + `no mem for frame buffer` + redémarrages | PSRAM désactivée (`sdkconfig` régénéré) | supprimer `sdkconfig`, puis `idf.py build` (reprend `sdkconfig.defaults`) |
 | `SPI Flash Size : 2MB` dans le journal | flash mal configurée | *Serial flasher config → Flash size* = 16 MB |
 | L'image se décale vers la droite après une action <!-- ⚫ AJOUTÉ (25/10/2026) --> | l'écriture en flash (sauvegarde) coupe l'accès PSRAM du DMA écran | `CONFIG_LCD_RGB_RESTART_IN_VSYNC` + `CONFIG_LCD_RGB_ISR_IRAM_SAFE` (`sdkconfig.defaults`, corrigé) |
-| Animation saccadée (< 10 images/s) <!-- ⚫ AJOUTÉ (25/10/2026) --> | tout l'écran redessiné à chaque image (`full_refresh`) ou bounce buffers actifs | `direct_mode` + synchro des 2 buffers au VSYNC dans `main/screen.c` (corrigé) |
+| Des éléments disparaissent une image sur deux pendant que le chien mange ou joue <!-- ⚫ AJOUTÉ (25/10/2026) --> | bascule de frame buffer : signal de fin de trame périmé, LVGL dessinait dans le buffer encore affiché | signal vidé après la bascule, attente d'une fin de trame postérieure (`main/screen.c`, corrigé) |
+| L'image bouge quand on valide une action <!-- ⚫ AJOUTÉ (25/10/2026) --> | la sauvegarde en flash suspend le remplissage des bounce buffers | bounce buffers de 30 lignes (~1 ms de marge) et sauvegarde différée de 2 s, regroupée (`main/pet.c`) (corrigé) |
+| L'image se décale un instant quand le chien bouge (la tête, les pattes) <!-- ⚫ AJOUTÉ (25/10/2026) --> | le DMA de l'écran lit la PSRAM en même temps que le rendu et la lecture des images : débit insuffisant | bounce buffers en RAM interne (`main/screen.c`), interruption de l'écran sur le cœur 0 (`screen_init()` dans `app_main`) (corrigé) |
+| Animation saccadée (< 10 images/s) <!-- ⚫ AJOUTÉ (25/10/2026) --> | tout l'écran redessiné à chaque image (`full_refresh`) ou bounce buffers actifs | `direct_mode` + synchro des 2 buffers en fin de trame dans `main/screen.c` (corrigé) |
 | Écran noir, ou image incomplète dès qu'une animation démarre | les buffers LVGL sont les frame buffers du panneau : sans `full_refresh` ni synchro, l'autre buffer n'est pas à jour | `direct_mode` + recopie des zones modifiées dans l'autre buffer après le VSYNC, dans `main/screen.c` (corrigé ; ⚫ 25/10/2026 : remplace `full_refresh = 1`) |
 | L'encodeur ne fait rien | bouton déclaré actif haut : LVGL le croit appuyé et ignore la rotation | `button_attch(BTN_PIN, 0, 10)` dans `main/screen.c` (corrigé) |
 | La jauge de LED tourne à l'envers | sens de l'anneau | *Anneau de LED → Sens inversé* |
@@ -164,7 +170,7 @@ compter ~50 s de flash à 921 600 bauds (`idf.py -p COM4 -b 921600 flash`).
 | Fichier | Rôle |
 |---|---|
 | `main/main.c` | initialisation des périphériques (NVS, écran + LVGL + encodeur, anneau de LED), tâche LVGL |
-| `main/screen.c` | panneau RGB 480×480 (`direct_mode`, 2 frame buffers synchronisés au VSYNC, mesure d'images/s), encodeur LVGL (rotation + bouton) |
+| `main/screen.c` | panneau RGB 480×480 (`direct_mode`, 2 frame buffers synchronisés en fin de trame, bounce buffers, mesure d'images/s), encodeur LVGL (rotation + bouton) |
 | `main/pet.c`, `main/pet.h` | modèle de l'animal : jauges, humeur, actions, évolution, sauvegarde NVS |
 | `main/pet_ui.c`, `main/pet_ui.h` | écran : la cour, le chien et ses déplacements (scripts), jauges, bulle, sélecteur d'actions |
 | `main/pet_assets.c`, `main/pet_assets.h`, `main/pet_assets_gen.h` <!-- ⚫ AJOUTÉ (25/10/2026) --> | images intégrées (`main/assets/*.bin`) et leurs descripteurs LVGL |

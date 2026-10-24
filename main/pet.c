@@ -47,6 +47,7 @@ static pet_t s_pet;
 static uint32_t s_naughty_acc;   // secondes de jeu depuis le dernier tirage de bêtise
 static uint32_t s_cry_s;         // durée des pleurs en cours
 static uint32_t s_save_acc;      // secondes réelles depuis la dernière sauvegarde
+static int s_save_in = -1;       // ⚫ AJOUTÉ (25/10/2026) : sauvegarde différée (secondes restantes, -1 = aucune)
 static char s_msg[96];
 
 static float clampf(float v)
@@ -166,7 +167,15 @@ bool pet_tick(uint32_t dt_s)
     }
 
     s_save_acc += dt_s;
-    if (event || s_save_acc >= CONFIG_PET_SAVE_PERIOD_S) pet_save();
+    // if (event || s_save_acc >= CONFIG_PET_SAVE_PERIOD_S) pet_save();
+    // ⚫ MODIFIÉ (25/10/2026) : actions et événements programment une sauvegarde 2 s plus tard (regroupée) :
+    // chaque écriture flash perturbe l'écran une fraction de seconde, on en fait le moins possible.
+    if (event && s_save_in < 0) s_save_in = 2;
+    if (s_save_in > 0) s_save_in -= (int)dt_s;
+    if (s_save_in == 0 || s_save_in < -1 || s_save_acc >= CONFIG_PET_SAVE_PERIOD_S) {
+        pet_save();          // remet s_save_acc à 0
+        s_save_in = -1;
+    }
     return event;
 }
 
@@ -329,7 +338,8 @@ pet_react_t pet_do(pet_action_t act, const char **msg)
     }
 
     clamp_all();
-    pet_save();
+    // pet_save();
+    s_save_in = 2;   // ⚫ MODIFIÉ (25/10/2026) : sauvegarde différée de 2 s (voir pet_tick), regroupe les appuis rapprochés
     // ⚫ MODIFIÉ (25/10/2026) : + soif
     ESP_LOGI(TAG, "Action %d -> %s (faim %.0f, soif %.0f, énergie %.0f, joie %.0f, discipline %.0f, santé %.0f)",
              act, s_msg, s->food, s->water, s->energy, s->joy, s->discipline, s->health);

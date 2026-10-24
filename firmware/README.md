@@ -9,10 +9,11 @@ Image complète (bootloader + table de partitions + application), à flasher à 
 | Fichier | Contenu | Taille | SHA-256 |
 |---|---|---|---|
 <!-- ⚫ MODIFIÉ (25/10/2026) : chien dans la cour (images), soif, écran sans décalage, direct_mode -->
-| `ZX2D10GE01R_pet.bin` | **Chien dans sa cour** (Kiko, temps réel, LED à 160/255) | 4 150 912 o | `ba227338d54190e421ba16966be71ffde75e49f3b505d17c9da1549cf5574afc` |
+| `ZX2D10GE01R_pet.bin` | **Chien dans sa cour** (Kiko, temps réel, LED à 160/255) | 4 150 992 o | `dcf10b5202f3788d654f6deb39f1969ec1bb8c17a12d3ae1a14659c4c420572a` |
 
 Vérifié sur la carte (25/10/2026) : flash (hash vérifié), démarrage unique sans erreur, lignes
-`PET_UI: Chien prêt (Kiko), 63 images` puis `RGB: 25 images/s, rendu 28 ms/image` dans le journal série.
+`PET_UI: Chien prêt (Kiko), 63 images` puis `RGB: 24 images/s, rendu 29 ms/image` dans le journal série
+(⚫ 25/10/2026 : bounce buffers de 30 lignes, synchro des buffers corrigée, sauvegarde différée de 2 s).
 
 - Cible : ESP32-S3 N16R8 (flash 16 Mo, PSRAM octale 8 Mo), ESP-IDF v5.0.9.
 
@@ -25,8 +26,14 @@ esptool.py --chip esp32s3 -p COM4 -b 460800 write_flash 0x0 ZX2D10GE01R_pet.bin
 Remplacer `COM4` par le port de la carte.
 Ou avec l'outil web : https://espressif.github.io/esptool-js/ (adresse `0x0`).
 
+<!-- ⚫ MODIFIÉ (25/10/2026) : constaté sur la carte, l'ancienne phrase était fausse :
 La sauvegarde de l'animal (NVS) n'est pas écrasée par ce flash : pour repartir avec un nouvel animal,
 lancer d'abord `esptool.py --chip esp32s3 -p COM4 erase_flash`.
+-->
+⚠️ Cette image complète **efface la sauvegarde du chien** (NVS, à 0x9000) : `merge_bin` comble l'espace entre
+le bootloader et l'application avec du vide. Au démarrage suivant : `PET: Nouvel animal : Kiko`.
+Pour mettre à jour en **gardant** le chien, flasher depuis les sources sans toucher à la NVS :
+`idf.py -p COM4 app-flash` (application seule) ou `idf.py -p COM4 flash`.
 
 ## Régénérer
 

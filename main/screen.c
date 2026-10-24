@@ -30,6 +30,8 @@ static button_t *g_btn;
 static esp_lcd_panel_handle_t g_panel_handle = NULL;
 
 // ⚫ AJOUTÉ (25/10/2026) : VSYNC du panneau (ISR, en IRAM car CONFIG_LCD_RGB_ISR_IRAM_SAFE)
+// ⚫ MODIFIÉ (25/10/2026) : avec les bounce buffers, signal "trame entièrement copiée" (on_bounce_frame_finish) :
+// le pilote vient de prendre en compte le nouveau buffer et ne lit plus l'ancien.
 static SemaphoreHandle_t g_vsync_sem;
 
 static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel, const esp_lcd_rgb_panel_event_data_t *edata, void *ctx)
@@ -51,15 +53,22 @@ static void __qsmd_rgb_disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area
 
     // ⚫ MODIFIÉ (25/10/2026) : direct_mode : LVGL ne redessine que les zones modifiées, à leur place, dans le
     // frame buffer caché (full_refresh redessinait les 480x480 pixels à chaque image : 7 images/s avec le décor).
-    // À la dernière zone : bascule sur ce buffer, attente du VSYNC (l'autre buffer n'est alors plus affiché),
+    // À la dernière zone : bascule sur ce buffer, attente de la fin de trame (l'autre buffer n'est alors plus lu),
     // puis recopie des zones modifiées dans l'autre buffer pour que les deux restent identiques.
     if (!lv_disp_flush_is_last(disp_drv)) {
         lv_disp_flush_ready(disp_drv);
         return;
     }
-    xSemaphoreTake(g_vsync_sem, 0);
+    // xSemaphoreTake(g_vsync_sem, 0);
+    // esp_lcd_panel_draw_bitmap(g_panel_handle, 0, 0, disp_drv->hor_res, disp_drv->ver_res, color_p);
+    // xSemaphoreTake(g_vsync_sem, pdMS_TO_TICKS(50));
+    // ⚫ MODIFIÉ (25/10/2026) : le signal est vidé APRÈS la bascule. Avant, une fin de trame survenue juste
+    // avant la bascule laissait un signal "périmé" : on croyait l'ancien buffer libéré alors qu'il restait
+    // affiché une trame de plus, et LVGL y dessinait l'image suivante sous les yeux (éléments qui disparaissent).
+    // Seule une fin de trame postérieure à la bascule garantit que le pilote a pris le nouveau buffer.
     esp_lcd_panel_draw_bitmap(g_panel_handle, 0, 0, disp_drv->hor_res, disp_drv->ver_res, color_p);
-    xSemaphoreTake(g_vsync_sem, pdMS_TO_TICKS(50));
+    xSemaphoreTake(g_vsync_sem, 0);
+    xSemaphoreTake(g_vsync_sem, pdMS_TO_TICKS(100));
 
     lv_disp_t *disp = _lv_refr_get_disp_refreshing();
     lv_disp_draw_buf_t *db = disp_drv->draw_buf;
@@ -131,7 +140,10 @@ void qmsd_rgb_init(esp_lcd_rgb_panel_config_t *panel_config)
 
     // ⚫ AJOUTÉ (25/10/2026) : signal VSYNC pour savoir quand le panneau a changé de buffer
     g_vsync_sem = xSemaphoreCreateBinary();
-    const esp_lcd_rgb_panel_event_callbacks_t cbs = { .on_vsync = on_vsync };
+    // const esp_lcd_rgb_panel_event_callbacks_t cbs = { .on_vsync = on_vsync };
+    // ⚫ MODIFIÉ (25/10/2026) : bounce buffers -> fin de copie de la trame (plus sûr que le VSYNC : la bascule
+    // de buffer du pilote se fait à ce moment-là)
+    const esp_lcd_rgb_panel_event_callbacks_t cbs = { .on_bounce_frame_finish = on_vsync };
     ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(g_panel_handle, &cbs, NULL));
 }
 
@@ -553,7 +565,15 @@ void screen_init(void) {
         // ⚫ MODIFIÉ (25/10/2026) : bounce buffers retirés : leur recopie par le CPU (~27 Mo/s, dans l'ISR, sur le
         // cœur de LVGL) divisait la fluidité. CONFIG_LCD_RGB_RESTART_IN_VSYNC suffit contre le décalage : le DMA
         // est recalé à chaque VSYNC, une écriture flash ne peut plus décaler l'image durablement.
-        .bounce_buffer_size_px = 0,
+        // .bounce_buffer_size_px = 0,
+        // ⚫ MODIFIÉ (25/10/2026) : bounce buffers rétablis : sans eux, l'image se décalait pendant une trame chaque
+        // fois que le chien bougeait (rendu + lecture des images en PSRAM -> le DMA de l'écran manquait de débit).
+        // Le DMA lit désormais la RAM interne ; la recopie (ISR) tourne sur le cœur 0 (screen_init() est appelé
+        // par app_main), le cœur 1 reste à LVGL ; direct_mode garde le rendu léger.
+        // .bounce_buffer_size_px = 10 * 480,
+        // ⚫ MODIFIÉ (25/10/2026) : 30 lignes (2 x 28,8 Ko de RAM interne) au lieu de 10 : une écriture flash
+        // suspend le remplissage ; 10 lignes ne laissaient que ~0,34 ms de marge, 30 lignes ~1 ms.
+        .bounce_buffer_size_px = 30 * 480,
         .clk_src = LCD_CLK_SRC_PLL160M,
     };
 
