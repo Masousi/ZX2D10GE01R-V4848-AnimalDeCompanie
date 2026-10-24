@@ -47,4 +47,29 @@ menu "Animal de compagnie"
             default 160
     endmenu
 
+    # ⚫ AJOUTÉ (25/10/2026) : serveur WiFi de configuration (main/wifi_cfg.c)
+    menu "WiFi (configuration par téléphone)"
+        config PET_WIFI
+            bool "Serveur WiFi de configuration"
+            default y
+            help
+                La carte crée son propre réseau WiFi ; s'y connecter avec un téléphone ouvre la page de
+                configuration (http://192.168.4.1) : choix du WiFi de la maison, état du chien.
+        config PET_WIFI_AP_SSID
+            string "Nom du réseau WiFi de la carte"
+            default "AnimalDeCompagnie_WiFi"
+            depends on PET_WIFI
+        config PET_WIFI_AP_PASS
+            string "Mot de passe du réseau de la carte (8 caractères min., vide = ouvert)"
+            default "kiko1234"
+            depends on PET_WIFI
+            help
+                Laisser vide crée un réseau ouvert : n'importe qui à portée pourrait alors changer la configuration.
+        config PET_WIFI_AP_CHANNEL
+            int "Canal du réseau de la carte"
+            range 1 13
+            default 6
+            depends on PET_WIFI
+    endmenu
+
 endmenu

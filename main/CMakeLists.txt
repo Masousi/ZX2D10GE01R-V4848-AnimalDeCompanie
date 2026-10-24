@@ -16,9 +16,13 @@ idf_component_register(
     # REQUIRES esp_lcd driver lvgl esp_timer button mt8901
     # ⚫ MODIFIÉ (24/10/2026) : + ws2812 (LED de l'encodeur)
     # ⚫ MODIFIÉ (24/10/2026) : + nvs_flash (sauvegarde de l'animal)
+    # REQUIRES esp_lcd driver lvgl esp_timer button mt8901 ws2812 nvs_flash
+    # ⚫ MODIFIÉ (25/10/2026) : + WiFi, serveur web (configuration par téléphone, main/wifi_cfg.c)
     REQUIRES esp_lcd driver lvgl esp_timer button mt8901 ws2812 nvs_flash
+             esp_wifi esp_netif esp_event esp_http_server lwip
     # ⚫ AJOUTÉ (25/10/2026)
     EMBED_FILES ${PET_ASSET_FILES}
+    EMBED_TXTFILES wifi_page.html
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")

@@ -19,6 +19,10 @@
 #include "pet_led.h"
 #include "pet_ui.h"
 #include "pet_assets.h"
+#include "wifi_cfg.h"   // ⚫ AJOUTÉ (25/10/2026)
+#ifndef CONFIG_PET_WIFI_AP_SSID   // WiFi désactivé dans menuconfig
+#define CONFIG_PET_WIFI_AP_SSID ""
+#endif
 
 #define TAG "PET_UI"
 
@@ -46,6 +50,7 @@ LV_FONT_DECLARE(font_pet_56);
 #define ICON_BALL     "\xEF\x90\xB3"   // U+F433 balle
 #define ICON_FRISBEE  "\xEF\x94\x9F"   // U+F51F disque
 #define ICON_BONE     "\xEF\x97\x97"   // U+F5D7 os
+#define ICON_WIFI     "\xEF\x87\xAB"   // U+F1EB WiFi (⚫ AJOUTÉ 25/10/2026)
 
 #define FRAME_MS    33       // animation du chien : ~30 images/s
 #define MSG_MS      4500     // durée d'affichage d'une bulle
@@ -731,7 +736,29 @@ static void info_refresh(void)
                                         (unsigned long)(age % 3600 / 60));
     else                       snprintf(age_txt, sizeof(age_txt), "%lu j %lu h", (unsigned long)(age / 86400),
                                         (unsigned long)(age % 86400 / 3600));
-    lv_label_set_text_fmt(s_info, "%s  ·  %s %s", CONFIG_PET_NAME, pet_stage_text(pet_stage()), age_txt);
+    // lv_label_set_text_fmt(s_info, "%s  ·  %s %s", CONFIG_PET_NAME, pet_stage_text(pet_stage()), age_txt);
+    // ⚫ MODIFIÉ (25/10/2026) : + icône WiFi : verte = connecté au WiFi de la maison, orange = connexion en cours,
+    // grise = pas de WiFi maison (configurable depuis le réseau de la carte)
+    wifi_cfg_status_t ws;
+    wifi_cfg_get_status(&ws);
+    const char *wcol = ws.sta_connected ? "50E07A" : ws.sta_configured ? "FFB040" : "9AA0B8";
+    lv_label_set_text_fmt(s_info, "%s  ·  %s %s  #%s " ICON_WIFI "#", CONFIG_PET_NAME, pet_stage_text(pet_stage()),
+                          age_txt, wcol);
+
+    // ⚫ AJOUTÉ (25/10/2026) : bulles WiFi (connexion établie, ou comment configurer)
+    static int last_conn = -1;
+    static bool hint_done;
+    if (last_conn >= 0 && ws.sta_connected != last_conn && !s_msg_on) {
+        char t[80];
+        if (ws.sta_connected) snprintf(t, sizeof(t), "WiFi connecté : %s", ws.sta_ip);
+        else snprintf(t, sizeof(t), "WiFi %s perdu, reconnexion...", ws.sta_ssid);
+        show_msg(t);
+    }
+    last_conn = ws.sta_connected;
+    if (!hint_done && ws.ap_on && !ws.sta_configured && !s_msg_on && lv_tick_get() > 8000) {
+        hint_done = true;
+        show_msg("Pour me configurer : WiFi " CONFIG_PET_WIFI_AP_SSID);
+    }
 
     if (s_msg_on && lv_tick_elaps(s_msg_t0) > MSG_MS) {
         s_msg_on = false;
@@ -1057,6 +1084,7 @@ void pet_ui_start(void)
     lv_obj_set_style_radius(s_info, 14, 0);
     lv_obj_set_style_pad_hor(s_info, 14, 0);
     lv_obj_set_style_pad_ver(s_info, 5, 0);
+    lv_label_set_recolor(s_info, true);   // ⚫ AJOUTÉ (25/10/2026) : couleur de l'icône WiFi
     lv_obj_align(s_info, LV_ALIGN_TOP_MID, 0, 34);
 
     // bulle de dialogue

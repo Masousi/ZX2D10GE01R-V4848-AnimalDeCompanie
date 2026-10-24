@@ -101,6 +101,30 @@ Effets courts à chaque action : arc-en-ciel (joie), battements roses (câlin), 
 extinction indigo (s'endort), lever de soleil (réveil), double clignotement ambre (refus), balayage violet
 (bêtise corrigée), flash rouge puis bleu (gronder / punir sans raison).
 
+<!-- ⚫ AJOUTÉ (25/10/2026) -->
+## Configuration par WiFi (téléphone)
+
+La carte crée son propre réseau WiFi :
+
+| | |
+|---|---|
+| **Réseau** | `AnimalDeCompagnie_WiFi` |
+| **Mot de passe** | `kiko1234` (à changer dans menuconfig) |
+| **Page** | s'ouvre toute seule (portail captif), sinon `http://192.168.4.1` |
+
+Sur la page :
+- **Connexion WiFi** : état du réseau de la carte et du WiFi de la maison (connecté, adresse IP, signal) ;
+- **Choisir le WiFi de la maison** : *Rechercher les réseaux*, toucher le sien, saisir le mot de passe,
+  *Enregistrer et connecter*. La carte s'y reconnecte ensuite à chaque démarrage ; *Oublier ce WiFi* l'efface ;
+- **Le chien** : humeur, âge et jauges en direct.
+
+À l'écran, l'icône WiFi de la pastille du haut est **verte** (connecté au WiFi de la maison), **orange**
+(connexion en cours) ou **grise** (aucun WiFi enregistré : une bulle rappelle comment configurer).
+
+Le réseau de la carte reste toujours disponible (mode AP + STA). Le WiFi, le serveur web et le DNS du portail
+tournent sur le cœur 1 (le cœur 0 sert l'écran) ; le pilote WiFi n'écrit rien en flash, seuls les identifiants
+validés sont sauvegardés (une écriture flash perturbe brièvement l'écran).
+
 ## Options du projet (`menuconfig` → **Animal de compagnie**)
 
 | Option | Défaut | Rôle |
@@ -111,6 +135,10 @@ extinction indigo (s'endort), lever de soleil (réveil), double clignotement amb
 | *Anneau de LED → Nombre de LED* | 13 | nombre de LED de l'anneau |
 | *Anneau de LED → Sens inversé* | ❌ | inverse le sens de la jauge |
 | *Anneau de LED → Luminosité max* | 160 | luminosité maximale (l'anneau reste allumé en permanence) |
+| *WiFi → Serveur WiFi de configuration* <!-- ⚫ AJOUTÉ (25/10/2026) --> | ✅ | réseau de la carte + page de configuration |
+| *WiFi → Nom du réseau WiFi de la carte* | AnimalDeCompagnie_WiFi | nom du réseau créé par la carte |
+| *WiFi → Mot de passe du réseau de la carte* | kiko1234 | 8 caractères minimum ; vide = réseau ouvert (déconseillé) |
+| *WiFi → Canal du réseau de la carte* | 6 | canal WiFi (1 à 13) |
 
 Pour repartir avec un **nouvel animal** : `idf.py -p COM4 erase-flash` puis reflasher (efface la sauvegarde NVS).
 <!-- ⚫ AJOUTÉ (25/10/2026) -->
@@ -131,6 +159,7 @@ Journal série attendu au démarrage :
 ```
 esp_psram: Found 8MB PSRAM device
 PET: Nouvel animal : Kiko            (ou "PET: Animal rechargé (âge … s)")
+WIFI: Réseau de configuration : AnimalDeCompagnie_WiFi (WPA2), page http://192.168.4.1 ; WiFi maison : aucun
 PET_UI: Chien prêt (Kiko), 67 images
 ```
 
@@ -183,6 +212,8 @@ compter ~50 s de flash à 921 600 bauds (`idf.py -p COM4 -b 921600 flash`).
 | `main/pet_assets.c`, `main/pet_assets.h`, `main/pet_assets_gen.h` <!-- ⚫ AJOUTÉ (25/10/2026) --> | images intégrées (`main/assets/*.bin`) et leurs descripteurs LVGL |
 | `tools/assets/` <!-- ⚫ AJOUTÉ (25/10/2026) --> | générateur des images : décor (`scene.mjs`), chien articulé (`dog.mjs`), accessoires (`props.mjs`), rendu SVG → RGB565 tramé (`render.mjs`) |
 | `main/pet_led.c`, `main/pet_led.h` | anneau de LED : jauge de bien-être, couleur d'humeur, effets d'action |
+| `main/wifi_cfg.c`, `main/wifi_cfg.h` <!-- ⚫ AJOUTÉ (25/10/2026) --> | réseau `AnimalDeCompagnie_WiFi`, connexion au WiFi de la maison, serveur web + API JSON, DNS du portail captif |
+| `main/wifi_page.html` <!-- ⚫ AJOUTÉ (25/10/2026) --> | page de configuration servie par la carte |
 | `main/font_fr_20.c`, `main/font_fr_28.c` | Montserrat avec accents + icônes FontAwesome (générées par `lv_font_conv`) |
 | `main/font_pet_56.c` | grandes icônes des effets flottants (cœurs, étoiles, Zzz, !, ?) |
 | `main/Kconfig.projbuild` | menu **Animal de compagnie** |

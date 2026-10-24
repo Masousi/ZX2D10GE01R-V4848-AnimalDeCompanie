@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!-- ⚫ AJOUTÉ (25/10/2026) : page de configuration servie par la carte (main/wifi_cfg.c), http://192.168.4.1 -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animal de compagnie · Configuration</title>
+<style>
+  :root { --bg:#f3efe6; --card:#fff; --ink:#2b2418; --muted:#7a6f5e; --line:#e4dccd; --accent:#c4471f; --ok:#2f8f4e; --warn:#c28a00; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14120e; --card:#211d17; --ink:#f1ebe0; --muted:#a99d8a; --line:#3a3328; --accent:#ff7a4a; --ok:#5fd18a; --warn:#f0c14a; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:520px; margin:0 auto; padding:20px 16px 40px; }
+  h1 { font-size:22px; margin:4px 0 2px; }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .card h2 { font-size:16px; margin:0 0 10px; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:4px 0; }
+  .row span:first-child { color:var(--muted); }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--muted); }
+  .dot.ok { background:var(--ok); } .dot.warn { background:var(--warn); }
+  label { display:block; font-size:14px; color:var(--muted); margin:12px 0 4px; }
+  input, select { width:100%; font-size:16px; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); }
+  button { font-size:16px; padding:11px 16px; border-radius:10px; border:0; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); border:1px solid var(--line); }
+  button:disabled { opacity:.5; }
+  .actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .nets { list-style:none; margin:8px 0 0; padding:0; }
+  .nets li { display:flex; justify-content:space-between; align-items:center; padding:10px 8px; border-top:1px solid var(--line); cursor:pointer; border-radius:8px; }
+  .nets li:hover, .nets li.sel { background:var(--bg); }
+  .bars { font-family:monospace; color:var(--muted); }
+  .msg { min-height:1.4em; margin-top:10px; font-size:14px; }
+  .msg.err { color:var(--accent); } .msg.ok { color:var(--ok); }
+  .gauge { margin:8px 0; }
+  .gauge .top { display:flex; justify-content:space-between; font-size:14px; }
+  .gauge .bar { height:8px; border-radius:4px; background:var(--line); overflow:hidden; margin-top:3px; }
+  .gauge .bar i { display:block; height:100%; border-radius:4px; }
+  .eye { display:flex; gap:8px; } .eye input { flex:1; } .eye button { padding:0 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Animal de compagnie</h1>
+  <p class="sub">Configuration de la carte</p>
+
+  <section class="card">
+    <h2>Connexion WiFi</h2>
+    <div class="row"><span>Réseau de la carte</span><b id="ap">…</b></div>
+    <div class="row"><span>WiFi de la maison</span><span id="sta"><span class="dot"></span>…</span></div>
+    <div class="row"><span>Adresse IP</span><span id="ip">—</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Choisir le WiFi de la maison</h2>
+    <button class="ghost" id="scan">Rechercher les réseaux</button>
+    <ul class="nets" id="nets"></ul>
+    <label for="ssid">Nom du réseau</label>
+    <input id="ssid" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <label for="pass">Mot de passe</label>
+    <div class="eye">
+      <input id="pass" type="password" maxlength="64" autocomplete="off">
+      <button class="ghost" id="show" type="button" aria-label="Afficher le mot de passe">Voir</button>
+    </div>
+    <div class="actions">
+      <button id="save">Enregistrer et connecter</button>
+      <button class="ghost" id="forget">Oublier ce WiFi</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section class="card">
+    <h2 id="petTitle">Le chien</h2>
+    <div class="row"><span>Humeur</span><span id="mood">…</span></div>
+    <div class="row"><span>Âge</span><span id="age">…</span></div>
+    <div id="gauges"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const msg = (t, cls) => { $('msg').textContent = t; $('msg').className = 'msg ' + (cls || ''); };
+
+async function status() {
+  try {
+    const s = await (await fetch('/api/status')).json();
+    $('ap').textContent = s.ap;
+    const dot = s.connected ? 'ok' : (s.configured ? 'warn' : '');
+    const txt = s.connected ? 'Connecté à ' + s.ssid + ' (' + s.rssi + ' dBm)'
+              : s.configured ? 'Connexion à ' + s.ssid + '…' : 'Aucun';
+    $('sta').innerHTML = '<span class="dot ' + dot + '"></span>' + esc(txt);
+    $('ip').textContent = s.connected ? s.ip : '—';
+    if (s.configured && !$('ssid').value) $('ssid').value = s.ssid;
+  } catch (e) { /* la carte redémarre ou le téléphone a quitté le réseau */ }
+}
+
+const GAUGES = [['food','Faim','#ff8a2a'],['water','Soif','#38b8ff'],['energy','Énergie','#f0c020'],
+                ['joy','Bonheur','#ff4a8a'],['discipline','Discipline','#a070ff'],['health','Santé','#30c060']];
+async function pet() {
+  try {
+    const p = await (await fetch('/api/pet')).json();
+    $('title').textContent = p.name;
+    $('petTitle').textContent = p.name;
+    $('mood').textContent = p.name + ' ' + p.mood;
+    const a = p.age, age = a < 3600 ? Math.floor(a / 60) + ' min' : a < 86400 ? Math.floor(a / 3600) + ' h ' + String(Math.floor(a % 3600 / 60)).padStart(2, '0')
+                                    : Math.floor(a / 86400) + ' j ' + Math.floor(a % 86400 / 3600) + ' h';
+    $('age').textContent = p.stage + ', ' + age;
+    $('gauges').innerHTML = GAUGES.map(([k, n, c]) =>
+      '<div class="gauge"><div class="top"><span>' + n + '</span><span>' + p[k] + ' %</span></div>' +
+      '<div class="bar"><i style="width:' + p[k] + '%;background:' + c + '"></i></div></div>').join('');
+  } catch (e) {}
+}
+
+$('scan').onclick = async () => {
+  $('scan').disabled = true; $('scan').textContent = 'Recherche…';
+  try {
+    const list = await (await fetch('/api/scan')).json();
+    $('nets').innerHTML = list.length ? list.map(n => {
+      const b = n.rssi > -55 ? '▂▄▆█' : n.rssi > -67 ? '▂▄▆_' : n.rssi > -78 ? '▂▄__' : '▂___';
+      return '<li data-s="' + esc(n.ssid) + '"><span>' + (n.lock ? '🔒 ' : '') + esc(n.ssid) + '</span><span class="bars">' + b + '</span></li>';
+    }).join('') : '<li>Aucun réseau trouvé, réessayez.</li>';
+    document.querySelectorAll('#nets li[data-s]').forEach(li => li.onclick = () => {
+      document.querySelectorAll('#nets li').forEach(x => x.classList.remove('sel'));
+      li.classList.add('sel'); $('ssid').value = li.dataset.s; $('pass').focus();
+    });
+  } catch (e) { msg('Recherche impossible, réessayez.', 'err'); }
+  $('scan').disabled = false; $('scan').textContent = 'Rechercher les réseaux';
+};
+
+$('show').onclick = () => { const p = $('pass'); p.type = p.type === 'password' ? 'text' : 'password'; $('show').textContent = p.type === 'password' ? 'Voir' : 'Cacher'; };
+
+$('save').onclick = async () => {
+  const ssid = $('ssid').value.trim();
+  if (!ssid) { msg('Choisissez ou saisissez un réseau.', 'err'); return; }
+  $('save').disabled = true; msg('Enregistrement…');
+  try {
+    const r = await (await fetch('/api/wifi', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ ssid, pass: $('pass').value }) })).json();
+    msg(r.ok ? 'Enregistré. Connexion en cours…' : (r.msg || 'Erreur'), r.ok ? 'ok' : 'err');
+  } catch (e) { msg('La carte ne répond pas.', 'err'); }
+  $('save').disabled = false; setTimeout(status, 3000);
+};
+
+$('forget').onclick = async () => {
+  if (!confirm('Oublier le WiFi de la maison ?')) return;
+  await fetch('/api/forget', { method: 'POST' }); $('ssid').value = ''; $('pass').value = '';
+  msg('WiFi oublié.', 'ok'); status();
+};
+
+status(); pet();
+setInterval(status, 4000); setInterval(pet, 5000);
+</script>
+</body>
+</html>

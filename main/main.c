@@ -14,6 +14,7 @@
 #include "board.h"
 #include "pet_led.h"
 #include "pet_ui.h"
+#include "wifi_cfg.h"   // ⚫ AJOUTÉ (25/10/2026)
 
 #define TAG "MAIN"
 
@@ -83,5 +84,6 @@ void app_main(void) {
     // bounce buffers depuis la PSRAM) est attachée au cœur qui crée le panneau ; LVGL garde le cœur 1 pour lui.
     screen_init();
     pet_led_start();   // ⚫ AJOUTÉ (24/10/2026) : anneau de LED WS2812 (tâche sur le cœur 0)
+    wifi_cfg_start();  // ⚫ AJOUTÉ (25/10/2026) : réseau "AnimalDeCompagnie_WiFi" + page de configuration (cœur 1)
     xTaskCreatePinnedToCore(lvgl_task, NULL, 8 * 1024, NULL, 5, NULL, 1);
 }

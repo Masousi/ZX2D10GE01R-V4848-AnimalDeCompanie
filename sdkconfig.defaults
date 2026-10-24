@@ -58,3 +58,12 @@ CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 # ⚫ AJOUTÉ (25/10/2026) : lignes de cache de 64 octets (recommandé par Espressif pour les écrans RGB) :
 # meilleur débit PSRAM -> le DMA de l'écran manque moins de données quand le chien bouge
 CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
+# ⚫ AJOUTÉ (25/10/2026) : serveur WiFi de configuration (main/wifi_cfg.c)
+# - tâches WiFi et lwIP sur le cœur 1 : le cœur 0 garde l'interruption de l'écran (bounce buffers)
+# - pas d'écriture flash automatique par le pilote WiFi (chaque écriture perturbe l'écran) : identifiants
+#   sauvegardés par le firmware uniquement quand on valide le formulaire
+# - en-têtes HTTP des navigateurs de téléphone > 512 octets
+CONFIG_ESP32_WIFI_TASK_PINNED_TO_CORE_1=y
+# CONFIG_ESP32_WIFI_NVS_ENABLED is not set
+CONFIG_LWIP_TCPIP_TASK_AFFINITY_CPU1=y
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
