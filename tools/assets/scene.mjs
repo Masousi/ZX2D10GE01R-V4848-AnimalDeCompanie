@@ -154,7 +154,9 @@ function trees(night) {
     return out;
 }
 
-export function sceneSvg({ night = false } = {}) {
+// ⚫ MODIFIÉ (25/10/2026) : kennelOnly = niche seule sur fond transparent (masque de la niche "au premier plan",
+// affichée devant le chien quand il passe derrière : voir gen.mjs)
+export function sceneSvg({ night = false, kennelOnly = false } = {}) {
     const r = rng(42);
     const sky = night
         ? `<stop offset="0" stop-color="#070b24"/><stop offset="0.6" stop-color="#16205a"/><stop offset="1" stop-color="#2d3c80"/>`
@@ -162,7 +164,7 @@ export function sceneSvg({ night = false } = {}) {
     const grassTop = night ? '#1f4a2c' : '#86cc52', grassBot = night ? '#0e2616' : '#3c8a26';
     const hill1 = night ? '#18304a' : '#7fb8a0', hill2 = night ? '#14303a' : '#5f9e5a';
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" viewBox="0 0 480 480">
+    const out = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" viewBox="0 0 480 480">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">${sky}</linearGradient>
     <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
@@ -248,6 +250,7 @@ export function sceneSvg({ night = false } = {}) {
     </filter>
     <clipPath id="lawnClip"><rect x="0" y="222" width="480" height="258"/></clipPath>
   </defs>
+  <!--@@KENNEL@@-->
 
   <rect width="480" height="480" fill="url(#sky)"/>
   ${night ? stars(r, 140) : ''}
@@ -289,4 +292,6 @@ export function sceneSvg({ night = false } = {}) {
   <rect x="186" y="186" width="8" height="12" rx="2" fill="#ffe6a0"/><rect x="185" y="183" width="10" height="3" fill="#3a2a1a"/>` : ''}
   <rect width="480" height="480" fill="url(#vignette)"/>
 </svg>`;
+    // niche seule : mêmes définitions (dégradés, filtres), sans le reste du décor
+    return kennelOnly ? out.slice(0, out.indexOf('<!--@@KENNEL@@-->')) + kennel() + '</svg>' : out;
 }

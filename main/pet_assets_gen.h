@@ -5,7 +5,9 @@
 // X(nom, largeur, hauteur, décalage x, décalage y, alpha)
 #define PET_ASSETS(X) \
     X(bg_day, 480, 480, 0, 0, 0) \
+    X(kennel_d, 168, 128, 30, 170, 1) \
     X(bg_night, 480, 480, 0, 0, 0) \
+    X(kennel_n, 168, 128, 30, 170, 1) \
     X(dog_stand_1_r, 165, 115, -97, -107, 1) \
     X(dog_stand_1_l, 165, 115, -68, -107, 1) \
     X(dog_stand_2_r, 159, 115, -91, -107, 1) \
@@ -67,6 +69,63 @@
     X(firefly, 16, 16, -8, -8, 1) \
     X(hole, 52, 20, -28, -10, 1) \
     X(clod, 8, 7, -4, -4, 1) \
+    X(frisbee, 32, 13, -16, -6, 1) \
+    X(bone, 34, 14, -17, -7, 1) \
+
+// X(image, dx, dy) : gueule par rapport à l'ancrage du chien
+#define PET_DOG_MOUTHS(X) \
+    X(dog_stand_1_r, 59, -75) \
+    X(dog_stand_1_l, -59, -75) \
+    X(dog_stand_2_r, 59, -75) \
+    X(dog_stand_2_l, -59, -75) \
+    X(dog_stand_3_r, 59, -75) \
+    X(dog_stand_3_l, -59, -75) \
+    X(dog_calm_1_r, 59, -75) \
+    X(dog_calm_1_l, -59, -75) \
+    X(dog_calm_2_r, 59, -75) \
+    X(dog_calm_2_l, -59, -75) \
+    X(dog_run_1_r, 63, -73) \
+    X(dog_run_1_l, -63, -73) \
+    X(dog_run_2_r, 64, -75) \
+    X(dog_run_2_l, -64, -75) \
+    X(dog_run_3_r, 63, -65) \
+    X(dog_run_3_l, -63, -65) \
+    X(dog_run_4_r, 64, -67) \
+    X(dog_run_4_l, -64, -67) \
+    X(dog_sit_r, 44, -82) \
+    X(dog_sit_l, -44, -82) \
+    X(dog_sit_happy_r, 44, -86) \
+    X(dog_sit_happy_l, -44, -86) \
+    X(dog_sit_love_r, 43, -90) \
+    X(dog_sit_love_l, -43, -90) \
+    X(dog_sit_sad_r, 52, -59) \
+    X(dog_sit_sad_l, -52, -59) \
+    X(dog_sit_cry_r, 47, -89) \
+    X(dog_sit_cry_l, -47, -89) \
+    X(dog_lie_r, 51, -48) \
+    X(dog_lie_l, -51, -48) \
+    X(dog_lie_sick_r, 62, -24) \
+    X(dog_lie_sick_l, -62, -24) \
+    X(dog_sleep_1_r, 60, -19) \
+    X(dog_sleep_1_l, -60, -19) \
+    X(dog_sleep_2_r, 60, -23) \
+    X(dog_sleep_2_l, -60, -23) \
+    X(dog_eat_1_r, 43, 2) \
+    X(dog_eat_1_l, -43, 2) \
+    X(dog_eat_2_r, 38, 6) \
+    X(dog_eat_2_l, -38, 6) \
+    X(dog_drink_1_r, 44, 2) \
+    X(dog_drink_1_l, -44, 2) \
+    X(dog_drink_2_r, 40, 5) \
+    X(dog_drink_2_l, -40, 5) \
+    X(dog_dig_1_r, 58, -34) \
+    X(dog_dig_1_l, -58, -34) \
+    X(dog_dig_2_r, 58, -34) \
+    X(dog_dig_2_l, -58, -34) \
+    X(dog_jump_r, 40, -113) \
+    X(dog_jump_l, -40, -113) \
+    X(dog_guilty_r, 63, -38) \
+    X(dog_guilty_l, -63, -38) \
 
 // Positions du décor (pixels écran) et bouche du chien qui mange (par rapport à son ancrage, tourné à droite)
 #define SCENE_KENNEL_X   100

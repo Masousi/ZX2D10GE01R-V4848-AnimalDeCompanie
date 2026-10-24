@@ -21,9 +21,12 @@ menu "Animal de compagnie"
     config PET_SAVE_PERIOD_S
         int "Sauvegarde en flash toutes les N secondes"
         range 10 3600
-        default 60
+        # default 60
+        # ⚫ MODIFIÉ (25/10/2026) : 5 min : chaque écriture flash perturbe brièvement l'écran
+        default 300
         help
-            L'état est aussi sauvegardé après chaque action. Il est rechargé au démarrage.
+            L'état est aussi sauvegardé quand le chien s'endort. Il est rechargé au démarrage.
+            Une coupure de courant fait perdre au plus N secondes de jeu.
 
     # ⚫ 24/10/2026 : reprise des réglages de l'ancien menu "Encoder LED ring" (APP_ENCODER_LED_*)
     menu "Anneau de LED (état de l'animal)"

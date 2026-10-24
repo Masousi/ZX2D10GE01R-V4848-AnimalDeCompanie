@@ -41,6 +41,11 @@ LV_FONT_DECLARE(font_pet_56);
 #define ICON_ENERGY   "\xEF\x83\xA7"   // U+F0E7 éclair
 #define ICON_DISC     "\xEF\x86\x9D"   // U+F19D toque de diplômé
 #define ICON_HEALTH   "\xEF\x88\x9E"   // U+F21E battement de cœur
+// ⚫ AJOUTÉ (25/10/2026) : nouveaux jeux
+#define ICON_RUN      "\xEF\x9C\x8C"   // U+F70C coureur
+#define ICON_BALL     "\xEF\x90\xB3"   // U+F433 balle
+#define ICON_FRISBEE  "\xEF\x94\x9F"   // U+F51F disque
+#define ICON_BONE     "\xEF\x97\x97"   // U+F5D7 os
 
 #define FRAME_MS    33       // animation du chien : ~30 images/s
 #define MSG_MS      4500     // durée d'affichage d'une bulle
@@ -53,7 +58,12 @@ static const char *const s_act_opts =
     ICON_FEED    "  Manger\n"
     ICON_DRINK   "  Boire\n"
     ICON_SLEEP   "  Dormir\n"
-    ICON_PLAY    "  Jouer\n"
+    // ICON_PLAY    "  Jouer\n"
+    // ⚫ MODIFIÉ (25/10/2026) : "Jouer" devient "Courir" + 3 nouveaux jeux
+    ICON_RUN     "  Courir\n"
+    ICON_BALL    "  Balle\n"
+    ICON_FRISBEE "  Frisbee\n"
+    ICON_BONE    "  Os à ronger\n"
     ICON_PET     "  Caresser\n"
     ICON_SCOLD   "  Gronder\n"
     ICON_PUNISH  "  Punir\n"
@@ -67,6 +77,14 @@ static const char *const s_act_opts =
 #define KENNEL_DOG_Y (SCENE_KENNEL_Y + 16)
 #define FOOD_DOG_X  (SCENE_FOOD_X - DOG_MOUTH_DX)   // tête dans la gamelle (tourné à droite)
 #define FOOD_DOG_Y  (SCENE_FOOD_Y - DOG_MOUTH_DY - 2)
+// ⚫ AJOUTÉ (25/10/2026) : emprise de la niche au sol (pieds du chien) : le chien la contourne par l'avant,
+// et la niche est redessinée devant lui quand il passe derrière (pieds au-dessus de KENNEL_FRONT_Y)
+#define KENNEL_X0      20
+#define KENNEL_X1      206
+#define KENNEL_Y0      236
+#define KENNEL_FRONT_Y 304
+#define KENNEL_PASS_X  218     // coin avant-droit par lequel il passe
+#define KENNEL_PASS_Y  320
 #define WATER_DOG_X (SCENE_WATER_X - DOG_MOUTH_DX)
 #define WATER_DOG_Y (SCENE_WATER_Y - DOG_MOUTH_DY - 2)
 
@@ -112,9 +130,11 @@ typedef struct {
     uint32_t ms;           // S_POSE : durée (0 = jusqu'à nouvel ordre)
     int8_t face;           // S_FACE : 1 = droite, -1 = gauche
     void (*fn)(void);      // S_FUNC
+    bool grab;             // ⚫ AJOUTÉ (25/10/2026) : S_JUMP : attrape au vol l'objet lancé (frisbee)
 } step_t;
 
-#define QMAX 12
+// #define QMAX 12
+#define QMAX 16   // ⚫ MODIFIÉ (25/10/2026) : scripts des jeux plus longs
 static step_t s_q[QMAX];
 static int s_qn, s_qi;           // nombre d'étapes, étape courante
 static uint32_t s_step_t0;       // début de l'étape courante
@@ -128,6 +148,22 @@ static struct {
     float jump;                  // hauteur du saut (px)
     float lap_a, lap_done;       // tours de piste : angle courant, angle parcouru
 } s_dog = { HOME_X, HOME_Y, 1, &AN_WAG, 0, 0, 0, 0 };
+static int s_dog_frame = A_dog_stand_1_r;   // ⚫ AJOUTÉ (25/10/2026) : image affichée (position de la gueule)
+
+// ⚫ AJOUTÉ (25/10/2026) : objet lancé (balle, frisbee) et objet tenu dans la gueule
+typedef struct {
+    lv_obj_t *o;
+    int id;
+    float x0, y0, x1, y1, h;   // départ, arrivée, hauteur de la trajectoire
+    uint32_t t0, ms;
+    bool on, hover;            // hover : reste en l'air à l'arrivée (frisbee qui plane)
+} proj_t;
+static proj_t s_proj;
+static lv_obj_t *s_carry;      // objet tenu (NULL = rien)
+static int s_carry_id;
+static bool s_chew;            // ronge (l'os bouge un peu)
+static int16_t s_tx, s_ty;     // cible du lancer en cours
+static int s_carry_lx = -9999, s_carry_ly;   // dernière position de l'objet tenu (évite les redessins)
 
 /* ---------- objets ---------- */
 
@@ -140,6 +176,7 @@ enum { G_FOOD, G_WATER, G_ENERGY, G_JOY, G_DISC, G_HEALTH, G_COUNT };
 static gauge_t s_gauge[G_COUNT];
 
 static lv_obj_t *s_scr, *s_bg_day, *s_bg_night, *s_cloud[2], *s_hole, *s_kibble, *s_ball, *s_dog_img;
+static lv_obj_t *s_frisbee, *s_bone, *s_kennel_d, *s_kennel_n;   // ⚫ AJOUTÉ (25/10/2026)
 static lv_obj_t *s_fly, *s_firefly[6], *s_fx;
 static lv_obj_t *s_info, *s_bubble, *s_bubble_lbl, *s_roller;
 
@@ -305,7 +342,8 @@ static void set_night(bool night)
         if (night) lv_obj_clear_flag(s_firefly[i], LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(s_firefly[i], LV_OBJ_FLAG_HIDDEN);
     }
     // ⚫ AJOUTÉ (25/10/2026) : la nuit, le chien et les accessoires prennent la teinte bleutée du décor
-    lv_obj_t *tinted[] = { s_dog_img, s_kibble, s_ball, s_hole };
+    // lv_obj_t *tinted[] = { s_dog_img, s_kibble, s_ball, s_hole };
+    lv_obj_t *tinted[] = { s_dog_img, s_kibble, s_ball, s_hole, s_frisbee, s_bone };   // ⚫ 25/10/2026 : + jeux
     for (size_t i = 0; i < sizeof(tinted) / sizeof(tinted[0]); i++) {
         lv_obj_set_style_img_recolor(tinted[i], lv_color_hex(0x0A1440), 0);
         lv_obj_set_style_img_recolor_opa(tinted[i], night ? LV_OPA_50 : LV_OPA_TRANSP, 0);
@@ -345,6 +383,112 @@ static void action_done(void)
     s_in_action = false;
 }
 
+/* ---------- ⚫ AJOUTÉ (25/10/2026) : lancers et objets dans la gueule ---------- */
+
+static void proj_start(lv_obj_t *o, int id, float x0, float y0, float x1, float y1, float h, uint32_t ms, bool hover)
+{
+    s_proj = (proj_t){ o, id, x0, y0, x1, y1, h, lv_tick_get(), ms, true, hover };
+    lv_anim_del(o, anim_opa);
+    lv_obj_clear_flag(o, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_opa(o, LV_OPA_COVER, 0);
+}
+
+static void proj_update(uint32_t now)
+{
+    if (!s_proj.on) return;
+    float t = lv_tick_elaps(s_proj.t0) / (float)s_proj.ms;
+    if (t > 1) t = 1;
+    float x = s_proj.x0 + (s_proj.x1 - s_proj.x0) * t;
+    float y = s_proj.y0 + (s_proj.y1 - s_proj.y0) * t - s_proj.h * 4 * t * (1 - t);
+    if (t >= 1 && s_proj.hover) y += sinf(now / 180.0f) * 3;   // plane en attendant d'être attrapé
+    img_at(s_proj.o, s_proj.id, (int)x, (int)y);
+}
+
+static void carry_update(void)
+{
+    if (!s_carry) return;
+    int x = (int)s_dog.x + g_dog_mouth_dx[s_dog_frame];
+    int y = (int)(s_dog.y - s_dog.jump) + g_dog_mouth_dy[s_dog_frame] + 3;
+    if (s_chew) x += (int)(sinf(lv_tick_get() / 90.0f) * 2);
+    if (x == s_carry_lx && y == s_carry_ly) return;   // pas de redessin inutile
+    s_carry_lx = x; s_carry_ly = y;
+    img_at(s_carry, s_carry_id, x, y);
+}
+
+static void grab_proj(void)          // l'objet lancé passe dans la gueule
+{
+    if (!s_proj.on) return;
+    s_proj.on = false;
+    s_carry = s_proj.o;
+    s_carry_id = s_proj.id;
+    s_carry_lx = -9999;
+}
+
+static void drop_carry(void)         // le pose au sol devant lui, puis il disparaît
+{
+    if (!s_carry) return;
+    img_at(s_carry, s_carry_id, (int)s_dog.x + s_dog.face * 50, (int)s_dog.y - 4);
+    fade(s_carry, 255, 0, 1500);
+    s_carry = NULL;
+    s_chew = false;
+}
+
+static void ball_throw(void)    { proj_start(s_ball, A_ball, 240, 440, s_tx, s_ty, 150, 1000, false); }
+static void frisbee_throw(void) { proj_start(s_frisbee, A_frisbee, 110, 420, s_tx, s_ty - 78, 70, 1300, true); }
+
+static void bone_give(void)
+{
+    lv_anim_del(s_bone, anim_opa);
+    lv_obj_clear_flag(s_bone, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_opa(s_bone, LV_OPA_COVER, 0);
+    s_carry = s_bone;
+    s_carry_id = A_bone;
+    s_carry_lx = -9999;
+    s_chew = true;
+}
+
+// Une nouvelle action interrompt le jeu en cours : on range les objets
+static void props_reset(void)
+{
+    lv_obj_t *objs[] = { s_frisbee, s_bone };
+    for (size_t i = 0; i < sizeof(objs) / sizeof(objs[0]); i++) {
+        if (!lv_obj_has_flag(objs[i], LV_OBJ_FLAG_HIDDEN)) fade(objs[i], lv_obj_get_style_opa(objs[i], 0), 0, 300);
+    }
+    if (s_carry == s_ball || (s_proj.on && s_proj.o == s_ball)) fade(s_ball, 255, 0, 300);
+    s_proj.on = false;
+    s_carry = NULL;
+    s_chew = false;
+}
+
+/* ---------- ⚫ AJOUTÉ (25/10/2026) : la niche ---------- */
+
+// Le segment (x0,y0)-(x1,y1) traverse-t-il l'emprise de la niche ? (Liang-Barsky)
+static bool crosses_kennel(float x0, float y0, float x1, float y1)
+{
+    float t0 = 0, t1 = 1, dx = x1 - x0, dy = y1 - y0;
+    const float p[4] = { -dx, dx, -dy, dy };
+    const float q[4] = { x0 - KENNEL_X0, KENNEL_X1 - x0, y0 - KENNEL_Y0, KENNEL_FRONT_Y - y0 };
+    for (int i = 0; i < 4; i++) {
+        if (p[i] == 0) { if (q[i] < 0) return false; continue; }
+        float r = q[i] / p[i];
+        if (p[i] < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+        else          { if (r < t0) return false; if (r < t1) t1 = r; }
+    }
+    return t1 - t0 > 0.001f;
+}
+
+// Niche redessinée devant le chien quand il est derrière (pieds plus haut que la façade, et à sa hauteur)
+static void kennel_depth(void)
+{
+    static int shown = -1;   // -1 = aucune, 0 = jour, 1 = nuit
+    bool behind = s_dog.y < KENNEL_FRONT_Y && s_dog.x < KENNEL_X1 + 110;
+    int want = behind ? (s_night ? 1 : 0) : -1;
+    if (want == shown) return;
+    shown = want;
+    if (want == 0) lv_obj_clear_flag(s_kennel_d, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(s_kennel_d, LV_OBJ_FLAG_HIDDEN);
+    if (want == 1) lv_obj_clear_flag(s_kennel_n, LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(s_kennel_n, LV_OBJ_FLAG_HIDDEN);
+}
+
 /* ---------- moteur de scripts ---------- */
 
 static void q_clear(void) { s_qn = s_qi = 0; s_step_t0 = lv_tick_get(); }
@@ -360,6 +504,7 @@ static void q_push(step_t st)
 #define CALL(F)         q_push((step_t){ .k = S_FUNC, .fn = (F) })
 #define LAPS()          q_push((step_t){ .k = S_LAPS })
 #define JUMP()          q_push((step_t){ .k = S_JUMP })
+#define JUMP_GRAB()     q_push((step_t){ .k = S_JUMP, .grab = true })   // ⚫ AJOUTÉ (25/10/2026)
 
 static void set_anim(const anim_t *a)
 {
@@ -428,6 +573,7 @@ static void dog_render(void)
     static int last_id = -1, last_x, last_y;
     if (id == last_id && x == last_x && y == last_y) return;   // rien n'a bougé : pas de redessin
     last_id = id; last_x = x; last_y = y;
+    s_dog_frame = id;   // ⚫ AJOUTÉ (25/10/2026)
     lv_img_set_src(s_dog_img, &g_pet_assets[id].img);
     img_at(s_dog_img, id, x, y);
 }
@@ -456,13 +602,24 @@ static void dog_update(float dt)
 
     switch (st->k) {
     case S_GOTO: {
-        float dx = st->x - s_dog.x, dy = st->y - s_dog.y;
+        // float dx = st->x - s_dog.x, dy = st->y - s_dog.y;
+        // ⚫ MODIFIÉ (25/10/2026) : si la ligne droite traverse la niche, il passe d'abord par son coin avant-droit
+        float gx = st->x, gy = st->y;
+        if (crosses_kennel(s_dog.x, s_dog.y, gx, gy) &&
+            !(fabsf(s_dog.x - KENNEL_PASS_X) < 2 && fabsf(s_dog.y - KENNEL_PASS_Y) < 2)) {
+            gx = KENNEL_PASS_X;
+            gy = KENNEL_PASS_Y;
+        }
+        float dx = gx - s_dog.x, dy = gy - s_dog.y;
         float d = sqrtf(dx * dx + dy * dy);
         float v = (st->run ? RUN_SPEED : WALK_SPEED) * dt;
         if (d <= v || d < 1.5f) {
-            s_dog.x = st->x;
-            s_dog.y = st->y;
-            step_next();
+            // s_dog.x = st->x;
+            // s_dog.y = st->y;
+            // step_next();
+            s_dog.x = gx;
+            s_dog.y = gy;
+            if (gx == st->x && gy == st->y) step_next();   // sinon : coin de la niche atteint, on repart
         } else {
             s_dog.x += dx / d * v;
             s_dog.y += dy / d * v;
@@ -487,6 +644,7 @@ static void dog_update(float dt)
         set_anim(&AN_JUMP);
         float t = el / 650.0f;
         s_dog.jump = t < 1 ? 48 * sinf(t * (float)M_PI) : 0;
+        if (st->grab && t >= 0.45f) grab_proj();   // ⚫ AJOUTÉ (25/10/2026) : attrape le frisbee au sommet du saut
         if (t >= 1) step_next();
         break;
     }
@@ -643,6 +801,10 @@ static void frame_cb(lv_timer_t *t)
 
     dog_update(dt);
     dog_render();
+    // ⚫ AJOUTÉ (25/10/2026)
+    proj_update(now);
+    carry_update();
+    kennel_depth();
 
     // dort : Zzz qui s'envolent de la niche
     if (s_mood == PET_MOOD_SLEEPING && s_dog.anim == &AN_SLEEP && now >= next_z) {
@@ -734,6 +896,7 @@ static void do_action(pet_action_t act)
 
     // script du chien
     q_clear();
+    props_reset();   // ⚫ AJOUTÉ (25/10/2026)
     s_in_action = true;
     s_dog.jump = 0;
     s_dog.lap_done = 0;
@@ -752,6 +915,30 @@ static void do_action(pet_action_t act)
         CALL(night_off); POSE(AN_LIE, 900); POSE(AN_WAG, 1200);
         break;
     case PET_REACT_JOY:
+        // ⚫ AJOUTÉ (25/10/2026) : nouveaux jeux
+        if (act == PET_ACT_FETCH) {          // balle lancée loin : il court la chercher et la rapporte
+            s_tx = rnd(350, 410);
+            s_ty = rnd(300, 336);
+            CALL(ball_throw); POSE(AN_WAG, 500);
+            GOTO(s_tx - 46, s_ty + 2, true); FACE(1); POSE(AN_EAT, 350); CALL(grab_proj);
+            GOTO(HOME_X, HOME_Y + 8, true); FACE(-1); POSE(AN_SIT_HAPPY, 500); CALL(drop_carry);
+            POSE(AN_WAG, 1400);
+            break;
+        }
+        if (act == PET_ACT_FRISBEE) {        // frisbee qui plane : il court dessous et saute pour l'attraper
+            s_tx = rnd(320, 400);
+            s_ty = rnd(300, 330);
+            CALL(frisbee_throw); POSE(AN_WAG, 400);
+            GOTO(s_tx - 40, s_ty, true); FACE(1); JUMP_GRAB();
+            GOTO(HOME_X, HOME_Y + 8, true); FACE(-1); CALL(drop_carry);
+            JUMP(); POSE(AN_WAG, 1200);
+            burst(ICON_STAR, 0xFFD84A, 3);
+            break;
+        }
+        if (act == PET_ACT_BONE) {           // couché, il ronge son os
+            CALL(bone_give); POSE(AN_LIE, 4500); CALL(drop_carry); POSE(AN_WAG, 800);
+            break;
+        }
         if (act == PET_ACT_PLAY) {
             float sx, sy;
             track_pos((float)M_PI * 0.5f, &sx, &sy);   // départ : devant la piste
@@ -825,9 +1012,23 @@ void pet_ui_start(void)
     s_kibble = img_create(s_scr, A_kibble);
     img_at(s_kibble, A_kibble, SCENE_FOOD_X, SCENE_FOOD_Y - 7);
     lv_obj_set_style_opa(s_kibble, LV_OPA_TRANSP, 0);
+    // s_ball = img_create(s_scr, A_ball);
+    // lv_obj_add_flag(s_ball, LV_OBJ_FLAG_HIDDEN);
+    s_dog_img = img_create(s_scr, A_dog_stand_1_r);
+    // ⚫ MODIFIÉ (25/10/2026) : objets de jeu dessinés devant le chien (il les tient dans la gueule),
+    // puis la niche "premier plan" (cachée sauf quand le chien passe derrière)
     s_ball = img_create(s_scr, A_ball);
     lv_obj_add_flag(s_ball, LV_OBJ_FLAG_HIDDEN);
-    s_dog_img = img_create(s_scr, A_dog_stand_1_r);
+    s_frisbee = img_create(s_scr, A_frisbee);
+    lv_obj_add_flag(s_frisbee, LV_OBJ_FLAG_HIDDEN);
+    s_bone = img_create(s_scr, A_bone);
+    lv_obj_add_flag(s_bone, LV_OBJ_FLAG_HIDDEN);
+    s_kennel_d = img_create(s_scr, A_kennel_d);
+    img_at(s_kennel_d, A_kennel_d, 0, 0);
+    lv_obj_add_flag(s_kennel_d, LV_OBJ_FLAG_HIDDEN);
+    s_kennel_n = img_create(s_scr, A_kennel_n);
+    img_at(s_kennel_n, A_kennel_n, 0, 0);
+    lv_obj_add_flag(s_kennel_n, LV_OBJ_FLAG_HIDDEN);
     s_fly = img_create(s_scr, A_fly_1);
     for (int i = 0; i < 6; i++) {
         s_firefly[i] = img_create(s_scr, A_firefly);

@@ -12,7 +12,10 @@ typedef enum {
     PET_ACT_FEED = 0,   // donner à manger
     PET_ACT_DRINK,      // ⚫ AJOUTÉ (25/10/2026) : donner à boire (gamelle d'eau)
     PET_ACT_SLEEP,      // faire dormir
-    PET_ACT_PLAY,       // jouer
+    PET_ACT_PLAY,       // jouer (⚫ 25/10/2026 : "Courir" : tours de piste derrière la balle)
+    PET_ACT_FETCH,      // ⚫ AJOUTÉ (25/10/2026) : lancer la balle, il la rapporte
+    PET_ACT_FRISBEE,    // ⚫ AJOUTÉ (25/10/2026) : frisbee attrapé au vol
+    PET_ACT_BONE,       // ⚫ AJOUTÉ (25/10/2026) : os à ronger (jeu calme)
     PET_ACT_PET,        // caresser
     PET_ACT_SCOLD,      // gronder
     PET_ACT_PUNISH,     // punir

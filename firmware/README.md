@@ -9,11 +9,11 @@ Image complète (bootloader + table de partitions + application), à flasher à 
 | Fichier | Contenu | Taille | SHA-256 |
 |---|---|---|---|
 <!-- ⚫ MODIFIÉ (25/10/2026) : chien dans la cour (images), soif, écran sans décalage, direct_mode -->
-| `ZX2D10GE01R_pet.bin` | **Chien dans sa cour** (Kiko, temps réel, LED à 160/255) | 4 150 992 o | `dcf10b5202f3788d654f6deb39f1969ec1bb8c17a12d3ae1a14659c4c420572a` |
+| `ZX2D10GE01R_pet.bin` | **Chien dans sa cour** (Kiko, temps réel, LED à 160/255) | 4 290 224 o | `f28046aa12095fd6dc1d54e7e6190157411e6dcac6796362144ea2c83b6791b1` |
 
 Vérifié sur la carte (25/10/2026) : flash (hash vérifié), démarrage unique sans erreur, lignes
-`PET_UI: Chien prêt (Kiko), 63 images` puis `RGB: 24 images/s, rendu 29 ms/image` dans le journal série
-(⚫ 25/10/2026 : bounce buffers de 30 lignes, synchro des buffers corrigée, sauvegarde différée de 2 s).
+`PET_UI: Chien prêt (Kiko), 67 images` puis `RGB: 27 images/s, rendu 21 ms/image` dans le journal série
+(⚫ 25/10/2026 : bounce buffers de 30 lignes, cache 64 o, sauvegarde toutes les 5 min, jeux Balle / Frisbee / Os).
 
 - Cible : ESP32-S3 N16R8 (flash 16 Mo, PSRAM octale 8 Mo), ESP-IDF v5.0.9.
 

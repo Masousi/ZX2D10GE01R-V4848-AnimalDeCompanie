@@ -170,7 +170,13 @@ bool pet_tick(uint32_t dt_s)
     // if (event || s_save_acc >= CONFIG_PET_SAVE_PERIOD_S) pet_save();
     // ⚫ MODIFIÉ (25/10/2026) : actions et événements programment une sauvegarde 2 s plus tard (regroupée) :
     // chaque écriture flash perturbe l'écran une fraction de seconde, on en fait le moins possible.
-    if (event && s_save_in < 0) s_save_in = 2;
+    // if (event && s_save_in < 0) s_save_in = 2;
+    // ⚫ MODIFIÉ (25/10/2026) : une écriture flash perturbe l'écran (le rafraîchissement des bounce buffers est
+    // suspendu) : plus aucune sauvegarde déclenchée par les appuis. Sauvegarde toutes les PET_SAVE_PERIOD_S
+    // (5 min par défaut) et 4 s après l'endormissement, quand la nuit est tombée (écran sombre).
+    static bool was_sleeping;
+    if (s_pet.sleeping && !was_sleeping && s_save_in < 0) s_save_in = 4;
+    was_sleeping = s_pet.sleeping;
     if (s_save_in > 0) s_save_in -= (int)dt_s;
     if (s_save_in == 0 || s_save_in < -1 || s_save_acc >= CONFIG_PET_SAVE_PERIOD_S) {
         pet_save();          // remet s_save_acc à 0
@@ -248,6 +254,51 @@ pet_react_t pet_do(pet_action_t act, const char **msg)
             set_msg("Youpi ! %s court après la balle !", name);
             r = PET_REACT_JOY;
         }
+        break;
+
+    // ⚫ AJOUTÉ (25/10/2026) : nouveaux jeux
+    case PET_ACT_FETCH:
+    case PET_ACT_FRISBEE: {
+        bool frisbee = (act == PET_ACT_FRISBEE);
+        float need = frisbee ? 20 : 12;   // le frisbee (course + saut) fatigue davantage
+        if (s_pet.crying) {
+            set_msg("%s pleure... console-le d'abord.", name);
+            r = PET_REACT_REFUSE;
+        } else if (s->energy < need) {
+            set_msg("%s est trop fatigué pour courir.", name);
+            r = PET_REACT_REFUSE;
+        } else if (s->food < 10 || s->water < 10) {
+            set_msg("%s a trop faim ou trop soif.", name);
+            r = PET_REACT_REFUSE;
+        } else {
+            s->joy        += frisbee ? 22 : 15;
+            s->energy     -= frisbee ? 14 : 8;
+            s->water      -= frisbee ? 8 : 6;
+            s->food       -= frisbee ? 4 : 3;
+            s->discipline += 3;               // il obéit et rapporte : bonne habitude
+            if (s_pet.naughty) s_pet.naughty = false;   // le jeu le détourne de sa bêtise
+            set_msg(frisbee ? "Hop ! %s attrape le frisbee au vol !" : "%s rapporte la balle, fier de lui !", name);
+            r = PET_REACT_JOY;
+        }
+        break;
+    }
+    case PET_ACT_BONE:
+        // jeu calme : possible même fatigué ; ne le récompense pas pendant une bêtise
+        if (s_pet.crying) {
+            s->joy += 6;
+            s_pet.crying = false;
+            set_msg("%s oublie son chagrin en rongeant son os.", name);
+        } else if (s_pet.naughty) {
+            s_pet.naughty = false;
+            s->discipline -= 3;
+            s->joy += 8;
+            set_msg("%s lâche sa bêtise pour l'os... malin !", name);
+        } else {
+            s->joy += 12;
+            s->food += 5;
+            set_msg("%s ronge son os, tout content.", name);
+        }
+        r = PET_REACT_JOY;
         break;
 
     case PET_ACT_PET:
@@ -339,7 +390,8 @@ pet_react_t pet_do(pet_action_t act, const char **msg)
 
     clamp_all();
     // pet_save();
-    s_save_in = 2;   // ⚫ MODIFIÉ (25/10/2026) : sauvegarde différée de 2 s (voir pet_tick), regroupe les appuis rapprochés
+    // s_save_in = 2;   // ⚫ MODIFIÉ (25/10/2026) : sauvegarde différée de 2 s (voir pet_tick), regroupe les appuis rapprochés
+    // ⚫ MODIFIÉ (25/10/2026) : plus de sauvegarde à l'action (voir pet_tick)
     // ⚫ MODIFIÉ (25/10/2026) : + soif
     ESP_LOGI(TAG, "Action %d -> %s (faim %.0f, soif %.0f, énergie %.0f, joie %.0f, discipline %.0f, santé %.0f)",
              act, s_msg, s->food, s->water, s->energy, s->joy, s->discipline, s->health);

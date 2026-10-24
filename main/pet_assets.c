@@ -9,6 +9,7 @@ PET_ASSETS(X)
 #undef X
 
 pet_asset_t g_pet_assets[A_COUNT];
+int16_t g_dog_mouth_dx[A_COUNT], g_dog_mouth_dy[A_COUNT];   // ⚫ AJOUTÉ (25/10/2026)
 
 void pet_assets_init(void)
 {
@@ -22,5 +23,9 @@ void pet_assets_init(void)
         .ox = (ox_), .oy = (oy_), \
     };
     PET_ASSETS(X)
+#undef X
+    // ⚫ AJOUTÉ (25/10/2026)
+#define X(name, dx, dy) g_dog_mouth_dx[A_##name] = (dx); g_dog_mouth_dy[A_##name] = (dy);
+    PET_DOG_MOUTHS(X)
 #undef X
 }

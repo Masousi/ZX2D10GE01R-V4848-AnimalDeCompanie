@@ -21,5 +21,8 @@ typedef struct {
 
 extern pet_asset_t g_pet_assets[A_COUNT];
 
+// ⚫ AJOUTÉ (25/10/2026) : gueule du chien pour chaque image (par rapport à l'ancrage), 0 pour les autres images
+extern int16_t g_dog_mouth_dx[A_COUNT], g_dog_mouth_dy[A_COUNT];
+
 // Remplit les descripteurs LVGL (à appeler une fois avant d'utiliser les images)
 void pet_assets_init(void);

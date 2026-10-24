@@ -44,9 +44,20 @@ function emit(name, img, { alpha = true, ax = 0, ay = 0, doCrop = true, png } = 
 }
 
 const t0 = Date.now();
+// ⚫ MODIFIÉ (25/10/2026) : + niche "au premier plan" (jour / nuit) : pixels du décor là où se trouve la niche,
+// affichés devant le chien quand il passe derrière elle. Masque = niche seule, sans son ombre au sol.
+const mask = renderSvg(sceneSvg({ kennelOnly: true }), 480);
 for (const night of [false, true]) {
     const r = renderSvg(sceneSvg({ night }), 480);
     emit(night ? 'bg_night' : 'bg_day', r, { alpha: false, doCrop: false, png: r.png });
+    const k = Buffer.alloc(r.rgba.length);
+    for (let i = 0; i < r.w * r.h; i++) {
+        const a = Math.max(0, Math.min(255, (mask.rgba[i * 4 + 3] - 128) * 2));   // ombre (alpha < 0,5) exclue
+        // pixels prémultipliés comme ceux de resvg (toLvgl les "dé-prémultiplie")
+        for (let c = 0; c < 3; c++) k[i * 4 + c] = Math.round(r.rgba[i * 4 + c] * a / 255);
+        k[i * 4 + 3] = a;
+    }
+    emit(night ? 'kennel_n' : 'kennel_d', { w: r.w, h: r.h, rgba: k }, { ax: 0, ay: 0 });
 }
 
 for (const pose of Object.keys(POSES)) {
@@ -66,6 +77,8 @@ P('fly_2', props.butterfly(false), 22);
 P('firefly', props.firefly(), 16);
 P('hole', props.hole(), 56);
 P('clod', props.clod(), 8);
+P('frisbee', props.frisbee(), 34);   // ⚫ AJOUTÉ (25/10/2026)
+P('bone', props.bone(), 34);         // ⚫ AJOUTÉ (25/10/2026)
 
 // En-tête C (X-macro) : nom, largeur, hauteur, décalage x/y du coin haut-gauche par rapport à l'ancrage, alpha
 const mouth = mouthOf('eat_1');
@@ -77,6 +90,15 @@ let h = `// ⚫ AJOUTÉ (25/10/2026) : FICHIER GÉNÉRÉ par tools/assets/gen.mj
 #define PET_ASSETS(X) \\
 `;
 for (const e of entries) h += `    X(${e.name}, ${e.w}, ${e.h}, ${e.ox}, ${e.oy}, ${e.alpha ? 1 : 0}) \\\n`;
+// ⚫ AJOUTÉ (25/10/2026) : position de la gueule de chaque image du chien (pour porter balle / frisbee / os)
+h += `
+// X(image, dx, dy) : gueule par rapport à l'ancrage du chien
+#define PET_DOG_MOUTHS(X) \\
+`;
+for (const pose of Object.keys(POSES)) {
+    const [dx, dy] = mouthOf(pose);
+    h += `    X(dog_${pose}_r, ${dx}, ${dy}) \\\n    X(dog_${pose}_l, ${-dx}, ${dy}) \\\n`;
+}
 h += `
 // Positions du décor (pixels écran) et bouche du chien qui mange (par rapport à son ancrage, tourné à droite)
 #define SCENE_KENNEL_X   ${SPOTS.kennelDoor[0]}

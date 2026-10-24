@@ -70,3 +70,17 @@ export function hole() {
 export function clod() {
     return svg(8, 7, `<ellipse cx="4" cy="3.6" rx="3.4" ry="2.8" fill="#6e4426"/><circle cx="3" cy="2.6" r="0.9" fill="#9a6a44"/>`);
 }
+
+// ⚫ AJOUTÉ (25/10/2026) : accessoires des nouveaux jeux (frisbee, os à ronger)
+export function frisbee() {
+    return svg(34, 14, `<ellipse cx="17" cy="8" rx="16" ry="5.5" fill="#a8121e"/><ellipse cx="17" cy="6.5" rx="16" ry="5.5" fill="url(#f)"/>`
+        + `<ellipse cx="17" cy="6.5" rx="9" ry="2.6" fill="none" stroke="#ffffff" stroke-width="0.9" opacity="0.6"/>`
+        + `<ellipse cx="12" cy="4.8" rx="5" ry="1.2" fill="#fff" opacity="0.55"/>`,
+        `<radialGradient id="f" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#ff7a5a"/><stop offset="1" stop-color="#d81e2a"/></radialGradient>`);
+}
+
+export function bone() {
+    return svg(34, 14, `<g transform="translate(17 7)"><path d="M-11 -2.6 h22 a4 4 0 1 1 3.2 4.6 a4 4 0 1 1 -3.2 4.6 h-22 a4 4 0 1 1 -3.2 -4.6 a4 4 0 1 1 3.2 -4.6 z" transform="translate(0 -2)" fill="url(#b)" stroke="#b8a27a" stroke-width="0.8"/></g>`
+        + `<path d="M8 4.6 h17" stroke="#fff" stroke-width="1" opacity="0.7" stroke-linecap="round"/>`,
+        `<linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#dccbaa"/></linearGradient>`);
+}
