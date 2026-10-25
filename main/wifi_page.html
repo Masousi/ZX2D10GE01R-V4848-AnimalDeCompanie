@@ -45,6 +45,7 @@
   .alerts { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
   /* ⚫ AJOUTÉ (25/10/2026) : bouton du son sur la scène */
   .sndbtn { position:absolute; right:10px; bottom:10px; padding:6px 10px; font-size:13px; background:rgba(255,255,255,.85); }
+  .sndlast { position:absolute; right:12px; bottom:46px; font-size:12px; color:#fff; text-shadow:0 1px 2px #000; opacity:.35; transition:opacity .4s; }
   /* ⚫ AJOUTÉ (25/10/2026) : boutons de commandes */
   .cmds { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; margin-top:14px; }
   .cmds.games { margin-top:8px; }
@@ -109,6 +110,7 @@
         <span class="live">EN DIRECT</span>
         <!-- ⚫ AJOUTÉ (25/10/2026) : sons (joués par ce téléphone / PC : appairez-le à une enceinte Bluetooth) -->
         <button class="ghost sndbtn" id="sndBtn" type="button">🔇 Activer le son</button>
+        <span class="sndlast" id="sndLast"></span>   <!-- ⚫ AJOUTÉ (25/10/2026) -->
         <div class="bubble hide" id="bubble"></div>
         <div class="loading" id="loading">Chargement des images…</div>
       </div>
@@ -286,7 +288,15 @@ async function pollScene() {
     scene = await (await fetch('/api/scene', { cache: 'no-store' })).json();
     // ⚫ AJOUTÉ (25/10/2026) : nouveau son à jouer (le premier reçu n'est pas joué : il date d'avant l'ouverture)
     // if (scene.snd) { if (lastSnd !== null && scene.snd[0] !== lastSnd && scene.son) play(scene.snd[1], scene.sp, scene.vol); lastSnd = scene.snd[0]; }
-    if (scene.snd) { if (lastSnd !== null && scene.snd[0] !== lastSnd && scene.son) play(scene.snd[1], scene.sp, scene.vol, scene.st); lastSnd = scene.snd[0]; }   // ⚫ 25/10/2026 : + âge
+    // if (scene.snd) { … un seul son, le dernier … }   // ⚫ 25/10/2026 : + âge
+    // ⚫ MODIFIÉ (25/10/2026) : tous les sons nouveaux depuis la dernière copie (espacés de 0,35 s)
+    if (scene.snd) {
+      if (lastSnd !== null && scene.son) {
+        let delay = 0;
+        for (const [sq, kind] of (scene.sq || [scene.snd])) if (sq > lastSnd) { setTimeout(() => play(kind, scene.sp, scene.vol, scene.st), delay); delay += 350; }
+      }
+      lastSnd = scene.snd[0];
+    }
     lastScene = performance.now();
     const b = $('bubble');
     if (scene.msg) { b.textContent = scene.msg; b.classList.remove('hide'); } else b.classList.add('hide');
@@ -437,17 +447,37 @@ $('reset').onclick = async () => {
 // La carte envoie dans la scène le dernier son à jouer (numéro, sorte) ; la page le synthétise selon l'espèce.
 let AC = null, master = null, sndOn = false, lastSnd = null;
 try { sndOn = localStorage.getItem('snd') === '1'; } catch (e) {}
-function sndUi() { $('sndBtn').textContent = sndOn ? '🔊 Son activé' : '🔇 Activer le son'; }
-$('sndBtn').onclick = () => {
-  sndOn = !sndOn;
-  try { localStorage.setItem('snd', sndOn ? '1' : '0'); } catch (e) {}
-  if (sndOn && !AC) { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.connect(AC.destination); }
-  if (AC && AC.state === 'suspended') AC.resume();
+// function sndUi() { $('sndBtn').textContent = sndOn ? '🔊 Son activé' : '🔇 Activer le son'; }
+// $('sndBtn').onclick = () => { sndOn = !sndOn; … AudioContext créé seulement ici … };
+// ⚫ MODIFIÉ (25/10/2026) : BUG : après un rechargement de la page, "Son activé" s'affichait mais le moteur audio
+// n'était pas créé (les navigateurs exigent un geste de l'utilisateur) : silence total, et l'appui coupait le son.
+// Maintenant : le moteur se débloque au premier toucher / clic n'importe où sur la page ; le bouton dit l'état réel.
+const audioReady = () => AC && AC.state === 'running';
+function sndUi() {
+  $('sndBtn').textContent = !sndOn ? '🔇 Activer le son' : audioReady() ? '🔊 Son activé' : '👆 Toucher pour le son';
+}
+function unlockAudio() {
+  if (!sndOn) return;
+  try {
+    if (!AC) { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.connect(AC.destination); }
+    if (AC.state !== 'running') AC.resume().then(sndUi);
+    preloadClips();
+  } catch (e) {}
   sndUi();
-  preloadClips();   // ⚫ AJOUTÉ (25/10/2026) : vrais sons chargés en arrière-plan
-  if (sndOn && scene) setTimeout(() => play('happy', scene.sp, scene.vol, scene.st), 600);
+}
+['pointerdown', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
+$('sndBtn').onclick = e => {
+  e.stopPropagation();
+  if (sndOn && !audioReady()) { unlockAudio(); }                // il fallait juste débloquer : on ne coupe pas
+  else { sndOn = !sndOn; try { localStorage.setItem('snd', sndOn ? '1' : '0'); } catch (x) {} unlockAudio(); }
+  sndUi();
+  if (sndOn && scene) setTimeout(() => play('happy', scene.sp, scene.vol, scene.st), 700);   // essai
 };
 sndUi();
+// dernier son reçu (sous le bouton) : on voit que la carte envoie bien les sons
+const SND_NAME = { happy: 'joie', soft: 'câlin', short: 'bref', call: 'appel', angry: 'colère', whine: 'plainte',
+  eat: 'mange', drink: 'boit', snore: 'ronfle', dig: 'creuse', cough: 'tousse', yawn: 'bâille' };
+function sndShow(kind) { const l = $('sndLast'); if (l) { l.textContent = '♪ ' + (SND_NAME[kind] || kind); l.style.opacity = 1; setTimeout(() => l.style.opacity = 0.35, 1500); } }
 // briques : oscillateur avec courbe de hauteur, bruit filtré
 function tone(type, t0, dur, f0, f1, gain, opt) {
   opt = opt || {};
@@ -567,7 +597,9 @@ function realVoice(sp, mood, st, t) {
   return true;
 }
 function play(kind, sp, vol, st) {
+  sndShow(kind);   // ⚫ AJOUTÉ (25/10/2026)
   if (!sndOn || !AC) return;
+  if (AC.state !== 'running') { AC.resume(); sndUi(); }
   master.gain.value = [0, 0.35, 0.65, 1][vol || 2];
   const t = AC.currentTime + 0.02;
   const herb = [2, 3, 4, 6, 7, 8, 9].includes(sp), big = [4, 6, 7, 9].includes(sp), rate = AGE_RATE[st] || 1;

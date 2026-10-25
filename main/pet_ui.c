@@ -502,11 +502,15 @@ static void emo_grumpy(void)     { thought(ICON_CLOUD, 0x6A6E78); }             
 // ⚫ AJOUTÉ (25/10/2026) : son à jouer par la page web (voix de l'espèce ou bruit d'action), via la scène
 static uint32_t s_snd_seq;
 static char s_snd_kind[10] = "";
+// ⚫ MODIFIÉ (25/10/2026) : les 4 derniers sons (deux sons rapprochés ne s'écrasent plus entre deux copies de la scène)
+static struct { uint32_t seq; char kind[10]; } s_snd_ring[4];
 static void snd(const char *kind)
 {
     if (!s_sound_on) return;
     s_snd_seq++;
     strlcpy(s_snd_kind, kind, sizeof(s_snd_kind));
+    s_snd_ring[s_snd_seq % 4].seq = s_snd_seq;
+    strlcpy(s_snd_ring[s_snd_seq % 4].kind, kind, sizeof(s_snd_ring[0].kind));
 }
 static void snd_eat(void)   { snd("eat"); }
 static void snd_drink(void) { snd("drink"); }
@@ -1148,6 +1152,7 @@ static void bone_script(void)
     } else {
         CALL(bone_give);
     }
+    CALL(snd_eat);   // ⚫ AJOUTÉ (25/10/2026) : il ronge
     POSE(AN_LIE, 3500);                                   // couché, il le ronge
     float tx = base_x + (base_x < 300 ? 1 : -1) * rnd(70, 100), ty = base_y + rnd(-14, 14);
     walk_clamp(&tx, &ty);
@@ -1752,6 +1757,8 @@ static void refresh(void)
             }
             if (mood == PET_MOOD_NAUGHTY) float_text("!", 0xFF4060, head_x(), head_y() - 20, 0, -30, 1200, 0);
             if (mood == PET_MOOD_NAUGHTY) snd("angry");   // ⚫ AJOUTÉ (25/10/2026)
+            if (mood == PET_MOOD_CRYING) snd("whine");    // ⚫ AJOUTÉ (25/10/2026) : chagrin : tout de suite
+            if (mood == PET_MOOD_HAPPY && old >= 0) snd("happy");
             if (old >= 0) ai_trigger(false);   // ⚫ AJOUTÉ (25/10/2026) : l'IA réagit au changement d'humeur
         }
         // ⚫ AJOUTÉ (25/10/2026) : bulle de pensée selon son état (toutes les ~14 s, pas pendant une action)
@@ -1775,6 +1782,10 @@ static void refresh(void)
             last_amb = lv_tick_get();
             if (p->sleeping) snd("snore");
             else if (mood == PET_MOOD_CRYING) snd("whine");
+            // ⚫ AJOUTÉ (25/10/2026) : triste ou malade : petite plainte de temps en temps ; heureux : un cri de joie
+            else if ((mood == PET_MOOD_SAD || mood == PET_MOOD_TIRED) && rnd(0, 2) == 0) snd("whine");
+            else if (mood == PET_MOOD_SICK && rnd(0, 1) == 0) snd("cough");
+            else if (mood == PET_MOOD_HAPPY && !s_in_action && rnd(0, 4) == 0) snd("happy");
         }
         // ⚫ AJOUTÉ (25/10/2026) : demande de sortie répétée tant qu'on ne l'emmène pas
         if (mood == PET_MOOD_POTTY && lv_tick_elaps(last_ask) > 20000 && !s_msg_on) {
@@ -1849,6 +1860,15 @@ static void snap_build(void)
                   lv_obj_has_flag(s_flash, LV_OBJ_FLAG_HIDDEN) ? 0 : lv_obj_get_style_opa(s_flash, 0),
                   lv_tick_elaps(s_muddy_until) > 0x80000000u, (unsigned long)s_snd_seq, s_snd_kind, s_species,
                   s_stage, s_sound_vol, s_sound_on);
+    // ⚫ AJOUTÉ (25/10/2026) : les 4 derniers sons
+    o -= 5;   // retire `"o":[`
+    o += snprintf(b + o, n - o, "\"sq\":[");
+    for (int k = 0; k < 4; k++) {
+        uint32_t sq = s_snd_seq >= 3u - k ? s_snd_seq - 3 + k : 0;
+        if (!sq || s_snd_ring[sq % 4].seq != sq) continue;
+        o += snprintf(b + o, n - o, "%s[%lu,\"%s\"]", b[o - 1] == '[' ? "" : ",", (unsigned long)sq, s_snd_ring[sq % 4].kind);
+    }
+    o += snprintf(b + o, n - o, "],\"o\":[");
     uint32_t cnt = lv_obj_get_child_cnt(s_scr);
     for (uint32_t i = 0; i < cnt && o < n; i++) {
         lv_obj_t *c = lv_obj_get_child(s_scr, i);
@@ -2254,6 +2274,16 @@ static void frame_cb(lv_timer_t *t)
         if (s_dog.anim == &AN_DIG && now >= next_clod) { next_clod = now + rnd(120, 260); clod_spawn(); }
         static uint32_t next_dig_snd;   // ⚫ AJOUTÉ (25/10/2026) : bruit de grattage (une fois par seconde au plus)
         if (s_dog.anim == &AN_DIG && now >= next_dig_snd) { next_dig_snd = now + 1100; snd_dig(); }
+        // ⚫ AJOUTÉ (25/10/2026) : il court en jouant (piste, balle, frisbee, oiseaux) : aboie / miaule / hennit
+        // de temps en temps ; chien plus souvent que les autres
+        static uint32_t next_run_snd;
+        if (s_dog.anim == &AN_RUN && s_in_action && now >= next_run_snd) {
+            next_run_snd = now + (s_species == 0 ? rnd(1800, 3200) : rnd(4500, 7000));
+            snd("happy");
+        }
+        // en sautant de joie
+        static uint32_t next_jump_snd;
+        if (s_dog.anim == &AN_JUMP && now >= next_jump_snd) { next_jump_snd = now + 2500; if (s_species <= 1) snd("happy"); }
         // ⚫ AJOUTÉ (25/10/2026) : heureux : juste un cœur de temps en temps
         if (s_mood == PET_MOOD_HAPPY && !s_in_action && now >= next_heart) { next_heart = now + 4000; heart(); }
         // ⚫ AJOUTÉ (25/10/2026) : des oiseaux viennent picorer de temps en temps ; l'animal joueur leur court après

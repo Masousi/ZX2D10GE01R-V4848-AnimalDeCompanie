@@ -14,7 +14,7 @@ Image complète (bootloader + table de partitions + application + **pack d'image
 <!-- ⚫ MODIFIÉ (25/10/2026) : 6 animaux à adopter, page web, QR code -->
 <!-- ⚫ MODIFIÉ (25/10/2026) : 10 espèces x 3 âges, météo réelle, IA, sons, commandes web -->
 <!-- ⚫ MODIFIÉ (25/10/2026) : + 41 sons réalistes dans le pack -->
-| `ZX2D10GE01R_pet.bin` | **Animal de compagnie** : 10 espèces × 3 âges, cour avec abri, heure et météo réelles, IA, sons réalistes, page web (LED à 160/255) | 16 327 928 o | `836267a41c78c798cddcb19e8386ccdfd5b431df828738310e4697fed1f7cbbb` |
+| `ZX2D10GE01R_pet.bin` | **Animal de compagnie** : 10 espèces × 3 âges, cour avec abri, heure et météo réelles, IA, sons réalistes, page web (LED à 160/255) | 16 327 928 o | `78c50e94229bbd61b256c91697f14d14239d9477f86b2eab8a48ad1c36614b39` |
 
 <!-- ⚫ MODIFIÉ (25/10/2026) : nouvelle vérification -->
 Vérifié sur la carte (25/10/2026, mêmes sources) : démarrage sans erreur, lignes
