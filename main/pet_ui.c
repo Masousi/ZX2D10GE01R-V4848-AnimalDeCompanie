@@ -1844,11 +1844,11 @@ static void snap_build(void)
     // o += snprintf(b + o, n - o, "{\"night\":%d,\"adopted\":%d,\"fog\":%d,\"flash\":%d,\"mud\":%d,\"o\":[", s_night, s_adopted,
     // ⚫ MODIFIÉ (25/10/2026) : + son à jouer (numéro, sorte), espèce, volume
     o += snprintf(b + o, n - o, "{\"night\":%d,\"adopted\":%d,\"fog\":%d,\"flash\":%d,\"mud\":%d,"
-                  "\"snd\":[%lu,\"%s\"],\"sp\":%d,\"vol\":%d,\"son\":%d,\"o\":[", s_night, s_adopted,
+                  "\"snd\":[%lu,\"%s\"],\"sp\":%d,\"st\":%d,\"vol\":%d,\"son\":%d,\"o\":[", s_night, s_adopted,
                   !lv_obj_has_flag(s_fog, LV_OBJ_FLAG_HIDDEN),
                   lv_obj_has_flag(s_flash, LV_OBJ_FLAG_HIDDEN) ? 0 : lv_obj_get_style_opa(s_flash, 0),
                   lv_tick_elaps(s_muddy_until) > 0x80000000u, (unsigned long)s_snd_seq, s_snd_kind, s_species,
-                  s_sound_vol, s_sound_on);
+                  s_stage, s_sound_vol, s_sound_on);
     uint32_t cnt = lv_obj_get_child_cnt(s_scr);
     for (uint32_t i = 0; i < cnt && o < n; i++) {
         lv_obj_t *c = lv_obj_get_child(s_scr, i);

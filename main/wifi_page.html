@@ -285,7 +285,8 @@ async function pollScene() {
   try {
     scene = await (await fetch('/api/scene', { cache: 'no-store' })).json();
     // ⚫ AJOUTÉ (25/10/2026) : nouveau son à jouer (le premier reçu n'est pas joué : il date d'avant l'ouverture)
-    if (scene.snd) { if (lastSnd !== null && scene.snd[0] !== lastSnd && scene.son) play(scene.snd[1], scene.sp, scene.vol); lastSnd = scene.snd[0]; }
+    // if (scene.snd) { if (lastSnd !== null && scene.snd[0] !== lastSnd && scene.son) play(scene.snd[1], scene.sp, scene.vol); lastSnd = scene.snd[0]; }
+    if (scene.snd) { if (lastSnd !== null && scene.snd[0] !== lastSnd && scene.son) play(scene.snd[1], scene.sp, scene.vol, scene.st); lastSnd = scene.snd[0]; }   // ⚫ 25/10/2026 : + âge
     lastScene = performance.now();
     const b = $('bubble');
     if (scene.msg) { b.textContent = scene.msg; b.classList.remove('hide'); } else b.classList.add('hide');
@@ -443,7 +444,8 @@ $('sndBtn').onclick = () => {
   if (sndOn && !AC) { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.connect(AC.destination); }
   if (AC && AC.state === 'suspended') AC.resume();
   sndUi();
-  if (sndOn && scene) play('happy', scene.sp, scene.vol);
+  preloadClips();   // ⚫ AJOUTÉ (25/10/2026) : vrais sons chargés en arrière-plan
+  if (sndOn && scene) setTimeout(() => play('happy', scene.sp, scene.vol, scene.st), 600);
 };
 sndUi();
 // briques : oscillateur avec courbe de hauteur, bruit filtré
@@ -516,10 +518,68 @@ function voice(sp, mood, t) {
     }
   }
 }
-function play(kind, sp, vol) {
+// ⚫ AJOUTÉ (25/10/2026) : vrais enregistrements (pack de la carte, /api/pack -> sounds), décodés une fois.
+// Hauteur selon l'âge (un petit a la voix plus aiguë) ; synthèse seulement si le son manque (lama, lapement).
+const clips = new Map(), clipLoad = new Map();
+function clip(name) {
+  if (clips.has(name)) return clips.get(name);
+  const idx = PACK && PACK.sounds ? PACK.sounds[name] : undefined;
+  if (idx === undefined || !AC) return null;
+  if (!clipLoad.has(name))
+    clipLoad.set(name, fetch('/api/img?i=' + idx + '&v=' + PACK.v).then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b))
+      .then(buf => { clips.set(name, buf); return buf; }).catch(() => null));
+  return null;
+}
+function preloadClips() { if (PACK && PACK.sounds) Object.keys(PACK.sounds).forEach(clip); }
+function playClip(name, rate, gain, t) {
+  const buf = clip(name);
+  if (!buf) return false;
+  const src = AC.createBufferSource(), g = AC.createGain();
+  src.buffer = buf; src.playbackRate.value = rate || 1; g.gain.value = gain === undefined ? 1 : gain;
+  src.connect(g); g.connect(master); src.start(t || AC.currentTime);
+  return true;
+}
+const pick = a => a[Math.floor(Math.random() * a.length)];
+// sons de chaque espèce selon la situation (happy, soft, short, call, angry, whine) ; bébé : petits cris propres
+const VOICES = [
+  { happy: ['dog_bark1', 'dog_bark2'], soft: ['dog_pant'], short: ['dog_bark3'], call: ['dog_bark3', 'dog_whine'], angry: ['dog_growl'], whine: ['dog_whine', 'dog_howl'], baby: ['dog_small'] },
+  { happy: ['cat_meow1'], soft: ['cat_purr'], short: ['cat_soft'], call: ['cat_meow2', 'cat_meow1'], angry: ['cat_growl'], whine: ['cat_complain'], baby: ['cat_kitten'] },
+  { all: ['sheep_1', 'sheep_2', 'sheep_3'] },
+  { all: ['goat_1', 'goat_2'], baby: ['goat_young'] },
+  { happy: ['horse_neigh'], soft: ['horse_snort'], short: ['horse_snort'], call: ['horse_call', 'horse_neigh'], angry: ['horse_snort'], whine: ['horse_call'] },
+  { all: ['pig_1', 'pig_2'] },
+  { all: ['cow_1', 'cow_2', 'cow_3'] },
+  { all: ['donkey_1', 'donkey_2'], soft: ['horse_snort'] },
+  { all: ['rabbit_1'] },
+  null,   // lama : pas d'enregistrement libre : fredonnement synthétisé
+];
+// taille de l'animal : voix des petits plus aiguë (âge 0 bébé, 1 adolescent, 2 adulte)
+const AGE_RATE = [1.32, 1.12, 1];
+function realVoice(sp, mood, st, t) {
+  const v = VOICES[sp];
+  if (!v) return false;
+  let list = (st === 0 && v.baby) || v[mood] || v.all || v.happy;
+  const babyClip = st === 0 && v.baby;
+  const rate = (babyClip ? 1 : AGE_RATE[st] || 1) * (mood === 'whine' ? 1.06 : mood === 'angry' ? 0.94 : 1) * (0.97 + Math.random() * 0.06);
+  const gain = mood === 'soft' ? 0.7 : mood === 'short' ? 0.8 : 1;
+  if (!playClip(pick(list), rate, gain, t)) return false;
+  if (mood === 'happy' && sp === 0 && Math.random() < 0.6) playClip(pick(list), rate * 1.03, 0.9, t + 0.55);   // aboie deux fois
+  return true;
+}
+function play(kind, sp, vol, st) {
   if (!sndOn || !AC) return;
   master.gain.value = [0, 0.35, 0.65, 1][vol || 2];
   const t = AC.currentTime + 0.02;
+  const herb = [2, 3, 4, 6, 7, 8, 9].includes(sp), big = [4, 6, 7, 9].includes(sp), rate = AGE_RATE[st] || 1;
+  switch (kind) {   // vrais bruits d'action d'abord
+  case 'eat':   if (playClip(herb ? 'act_graze' : 'act_crunch', rate, herb ? 0.9 : 2.2, t)) return; break;   // (croquettes : enregistrement plus faible)
+  case 'snore': if (playClip('act_snore', (big ? 0.85 : 1.25) * rate, 0.6, t)) return; break;
+  case 'dig':   if (playClip('act_dig', 1.15, 0.5, t)) return; break;
+  case 'yawn':  if (playClip('act_yawn', (big ? 0.85 : 1.3) * rate, 0.7, t)) return; break;
+  case 'cough': if (playClip(big ? 'horse_cough' : 'act_cough', big ? 1 : 1.45 * rate, 0.8, t)) return; break;
+  case 'drink': break;   // pas d'enregistrement libre de lapement : synthèse
+  default:      if (realVoice(sp, kind, st, t)) return;
+  }
   switch (kind) {
   case 'eat':   for (let i = 0; i < 6; i++) noise(t + i * 0.32 + Math.random() * 0.05, 0.07, 0.35, 'highpass', 2500); break;   // croque
   case 'drink': for (let i = 0; i < 9; i++) noise(t + i * 0.17, 0.05, 0.3, 'bandpass', 1600 + Math.random() * 600, 6); break;   // lape

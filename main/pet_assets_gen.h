@@ -3,8 +3,8 @@
 #pragma once
 
 #define PET_PACK_MAGIC     0x41544550u   // 'PETA'
-#define PET_PACK_COUNT     1325
-#define PET_PACK_SIZE      13754311
+#define PET_PACK_COUNT     1366
+#define PET_PACK_SIZE      14165240
 
 // Décor et accessoires : X(nom, index dans le pack)
 #define PET_ASSETS(X) \
@@ -138,6 +138,53 @@
 #define PET_POSE_COUNT     42
 #define PET_ANIMAL_BASE    65
 #define PET_AGE_COUNT      3   // ⚫ AJOUTÉ (25/10/2026) : 0 bébé, 1 adolescent, 2 adulte
+
+// ⚫ AJOUTÉ (25/10/2026) : sons (MP3) : X(nom, index dans le pack)
+#define PET_SOUND_BASE     1325
+#define PET_SOUND_COUNT    41
+#define PET_SOUNDS(X) \
+    X(act_carrot, 1325) \
+    X(act_cough, 1326) \
+    X(act_crunch, 1327) \
+    X(act_dig, 1328) \
+    X(act_graze, 1329) \
+    X(act_sniff, 1330) \
+    X(act_snore, 1331) \
+    X(act_yawn, 1332) \
+    X(cat_complain, 1333) \
+    X(cat_growl, 1334) \
+    X(cat_kitten, 1335) \
+    X(cat_meow1, 1336) \
+    X(cat_meow2, 1337) \
+    X(cat_purr, 1338) \
+    X(cat_soft, 1339) \
+    X(cow_1, 1340) \
+    X(cow_2, 1341) \
+    X(cow_3, 1342) \
+    X(dog_bark1, 1343) \
+    X(dog_bark2, 1344) \
+    X(dog_bark3, 1345) \
+    X(dog_growl, 1346) \
+    X(dog_howl, 1347) \
+    X(dog_pant, 1348) \
+    X(dog_small, 1349) \
+    X(dog_whine, 1350) \
+    X(donkey_1, 1351) \
+    X(donkey_2, 1352) \
+    X(goat_1, 1353) \
+    X(goat_2, 1354) \
+    X(goat_young, 1355) \
+    X(horse_call, 1356) \
+    X(horse_cough, 1357) \
+    X(horse_neigh, 1358) \
+    X(horse_snort, 1359) \
+    X(pig_1, 1360) \
+    X(pig_2, 1361) \
+    X(rabbit_1, 1362) \
+    X(sheep_1, 1363) \
+    X(sheep_2, 1364) \
+    X(sheep_3, 1365) \
+
 
 // Gueule de l'animal par espèce et par pose, par rapport à son ancrage (tourné vers la droite)
 // ⚫ MODIFIÉ (25/10/2026) : par âge

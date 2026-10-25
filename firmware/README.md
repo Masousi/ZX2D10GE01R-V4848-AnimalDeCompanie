@@ -13,11 +13,12 @@ Image complète (bootloader + table de partitions + application + **pack d'image
 |---|---|---|---|
 <!-- ⚫ MODIFIÉ (25/10/2026) : 6 animaux à adopter, page web, QR code -->
 <!-- ⚫ MODIFIÉ (25/10/2026) : 10 espèces x 3 âges, météo réelle, IA, sons, commandes web -->
-| `ZX2D10GE01R_pet.bin` | **Animal de compagnie** : 10 espèces × 3 âges, cour avec abri, heure et météo réelles, IA, sons, page web (LED à 160/255) | 15 916 999 o | `6d0f84b744dea5eecb8307d24d536c10924cad90ae0571f9749ac40eec0fe2d8` |
+<!-- ⚫ MODIFIÉ (25/10/2026) : + 41 sons réalistes dans le pack -->
+| `ZX2D10GE01R_pet.bin` | **Animal de compagnie** : 10 espèces × 3 âges, cour avec abri, heure et météo réelles, IA, sons réalistes, page web (LED à 160/255) | 16 327 928 o | `836267a41c78c798cddcb19e8386ccdfd5b431df828738310e4697fed1f7cbbb` |
 
 <!-- ⚫ MODIFIÉ (25/10/2026) : nouvelle vérification -->
 Vérifié sur la carte (25/10/2026, mêmes sources) : démarrage sans erreur, lignes
-`ASSETS: Pack : 1325 images, 13431 Ko`, `WIFI: Connecté à …`, `METEO: … ciel dégagé …`, `IA: Google Gemini : …` puis
+`ASSETS: Pack : 1366 images, 13833 Ko`, `WIFI: Connecté à …`, `METEO: … ciel dégagé …`, `IA: Google Gemini : …` puis
 `RGB: 26 images/s, rendu 17 ms/image` dans le journal série.
 
 - Cible : ESP32-S3 N16R8 (flash 16 Mo, PSRAM octale 8 Mo), ESP-IDF v5.0.9.

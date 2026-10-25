@@ -12,6 +12,8 @@
 //   données  : alignées sur 4 octets
 //   formats  : 0 = RGB565, 1 = RGB565 + alpha (3 o/pixel), 2 = 256 couleurs (palette 256 x BGRA puis index)
 //              ⚫ AJOUTÉ (25/10/2026) : 3 = 256 couleurs compressé (transparence en plages, voir toIndexedRle)
+//              ⚫ AJOUTÉ (25/10/2026) : 5 = son MP3 (tools/assets/sounds, joué par la page web), après les animaux
+//   ⚫ AJOUTÉ (25/10/2026) : champ réservé de l'en-tête = index de la première image d'animal
 // ⚫ MODIFIÉ (25/10/2026) : 3 âges par espèce (bébé, adolescent, adulte), dessinés chacun avec ses proportions
 import fs from 'fs';
 import path from 'path';
@@ -156,7 +158,9 @@ let old = null;
 if (keep) {
     const b = fs.readFileSync(packPath), n = b.readUInt32LE(8), nA = STAGES.length * speciesIds.length * poseIds.length;
     old = [];
-    for (let i = n - nA; i < n; i++) {
+    // for (let i = n - nA; i < n; i++) {
+    const a0 = b.readUInt32LE(12) || n - nA;   // ⚫ MODIFIÉ (25/10/2026) : les sons suivent les animaux
+    for (let i = a0; i < a0 + nA; i++) {
         const o = 16 + i * 20, off = b.readUInt32LE(o), size = b.readUInt32LE(o + 4);
         old.push({ w: b.readUInt16LE(o + 8), h: b.readUInt16LE(o + 10), ox: b.readInt16LE(o + 12), oy: b.readInt16LE(o + 14),
                    cf: b.readUInt8(o + 16), data: Buffer.from(b.subarray(off, off + size)) });
@@ -177,11 +181,19 @@ STAGES.forEach((st, stage) => {
     console.log(`${st} : ${speciesIds.length} espèces x ${poseIds.length} poses`);
 });
 
+// ⚫ AJOUTÉ (25/10/2026) : sons réalistes (MP3 fabriqués par sounds/make_sounds.py), après les animaux
+const soundDir = path.join(here, 'sounds');
+const soundBase = entries.length;
+const soundNames = fs.existsSync(soundDir) ? fs.readdirSync(soundDir).filter(f => f.endsWith('.mp3')).sort() : [];
+for (const f of soundNames) entries.push({ name: 'snd_' + f.slice(0, -4), w: 0, h: 0, ox: 0, oy: 0, cf: 5, data: fs.readFileSync(path.join(soundDir, f)) });
+console.log(`${soundNames.length} sons`);
+
 // pack
 const head = Buffer.alloc(16 + entries.length * 20);
 head.write('PETA', 0, 'ascii');
 head.writeUInt32LE(1, 4);
 head.writeUInt32LE(entries.length, 8);
+head.writeUInt32LE(animalBase, 12);   // ⚫ AJOUTÉ (25/10/2026)
 let off = head.length;
 const chunks = [head];
 entries.forEach((e, i) => {
@@ -228,6 +240,13 @@ ${poseIds.map(p => `    X(${p}) \\`).join('\n')}
 #define PET_POSE_COUNT     ${poseIds.length}
 #define PET_ANIMAL_BASE    ${animalBase}
 #define PET_AGE_COUNT      ${STAGES.length}   // ⚫ AJOUTÉ (25/10/2026) : 0 bébé, 1 adolescent, 2 adulte
+
+// ⚫ AJOUTÉ (25/10/2026) : sons (MP3) : X(nom, index dans le pack)
+#define PET_SOUND_BASE     ${soundBase}
+#define PET_SOUND_COUNT    ${soundNames.length}
+#define PET_SOUNDS(X) \\
+${soundNames.map((f, i) => `    X(${f.slice(0, -4)}, ${soundBase + i}) \\`).join('\n')}
+
 
 // Gueule de l'animal par espèce et par pose, par rapport à son ancrage (tourné vers la droite)
 // ⚫ MODIFIÉ (25/10/2026) : par âge

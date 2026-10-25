@@ -340,7 +340,8 @@ static esp_err_t h_scene(httpd_req_t *req)
 static esp_err_t h_pack(httpd_req_t *req)
 {
     int n = pet_pack_count();
-    char *buf = malloc(64 + n * 40 + PET_ANIMAL_BASE * 24);
+    // char *buf = malloc(64 + n * 40 + PET_ANIMAL_BASE * 24);
+    char *buf = malloc(64 + n * 40 + PET_ANIMAL_BASE * 24 + PET_SOUND_COUNT * 32 + 32);   // ⚫ MODIFIÉ (25/10/2026) : + sons
     if (!buf) return httpd_resp_send_500(req);
     size_t o = snprintf(buf, 64, "{\"v\":%u,\"base\":%d,\"poses\":%d,\"e\":[", (unsigned)PET_PACK_SIZE, PET_ANIMAL_BASE, PET_POSE_COUNT);
     for (int i = 0; i < n; i++) {
@@ -356,7 +357,14 @@ static esp_err_t h_pack(httpd_req_t *req)
     };
     o += sprintf(buf + o, "],\"names\":[");
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) o += sprintf(buf + o, "%s\"%s\"", i ? "," : "", names[i]);
-    o += sprintf(buf + o, "]}");
+    // o += sprintf(buf + o, "]}");
+    // ⚫ MODIFIÉ (25/10/2026) : + sons réalistes : {"dog_bark1": index, …}
+    o += sprintf(buf + o, "],\"sounds\":{");
+    int k = 0;
+#define X(name, idx) o += sprintf(buf + o, "%s\"" #name "\":%d", k++ ? "," : "", idx);
+    PET_SOUNDS(X)
+#undef X
+    o += sprintf(buf + o, "}}");
     esp_err_t r = send_json(req, buf);
     free(buf);
     return r;

@@ -205,10 +205,21 @@ La page :
 <!-- ⚫ AJOUTÉ (25/10/2026) -->
 ### Sons
 
-La carte n'a pas de haut-parleur : elle envoie à la page, avec la scène, le son à jouer, que le navigateur
-**synthétise** (Web Audio, sans fichier son) : voix de chaque espèce (aboiement, miaou ou ronronnement, bêlement,
-chevrotement, hennissement, groin, meuh, hi-han, couic, fredonnement du lama) selon la situation (joie, câlin,
-appel, colère, plainte), et bruits d'action (croquettes, lapement, ronflement, grattage, toux, bâillement).
+<!-- ⚫ MODIFIÉ (25/10/2026) : vrais enregistrements (était : voix synthétisées par le navigateur) -->
+La carte n'a pas de haut-parleur : elle envoie à la page, avec la scène, le son à jouer, et la page joue de
+**vrais enregistrements** (41 extraits, 480 Ko, rangés dans le pack d'images et servis par la carte) :
+aboiements, grognement, gémissement, hurlement et halètement du chien ; miaulements, ronronnement, feulement et
+plainte du chat ; bêlements du mouton, de la chèvre et du chevreau ; hennissements, ébrouement et toux du cheval ;
+braiment de l'âne ; meuglements ; grognements du cochon ; lapin dans son clapier ; et les bruits d'action
+(croquettes, herbe broutée, carotte croquée, ronflement, bâillement, toux, grattage, reniflement). Le son suit la
+situation (joie, câlin, appel, colère, plainte) et **l'âge** (voix plus aiguë chez le petit ; chiot, chaton et
+chevreau ont leurs propres cris). Seuls le fredonnement du lama et le lapement de l'eau, sans enregistrement libre
+trouvé, sont synthétisés (Web Audio), comme tout son absent du pack.
+
+Sources : [BigSoundBank](https://bigsoundbank.com) (Joseph Sardin, **CC0**) et Wikimedia Commons (cochon :
+Secretlondon, CC BY-SA 3.0) — détail dans [`tools/assets/sounds/CREDITS.md`](tools/assets/sounds/CREDITS.md).
+Les extraits se refont avec `python tools/assets/sounds/make_sounds.py <ffmpeg.exe>` (téléchargement, découpe
+au premier son, volume normalisé, MP3 mono 22 kHz), puis `node gen.mjs --keep-animals` et reflasher.
 Appuyer une fois sur **🔊 Activer le son** (les navigateurs l'exigent). Pour une enceinte Bluetooth : l'appairer au
 téléphone ou au PC qui affiche la page. Son coupé / volume : *Connectivité* sur l'écran.
 
@@ -269,7 +280,7 @@ idf.py -p COM4 -b 921600 build flash monitor
 
 <!-- ⚫ MODIFIÉ (25/10/2026) -->
 <!-- ⚫ MODIFIÉ (25/10/2026) : pack de 13,4 Mo, ~3 min ; mise à jour de l'application seule -->
-`idf.py flash` écrit aussi le **pack d'images** `assets/pet_assets.bin` (1 325 images, 13,4 Mo) dans la partition
+`idf.py flash` écrit aussi le **pack d'images** `assets/pet_assets.bin` (1 325 images + 41 sons, 14,2 Mo) dans la partition
 `assets` (environ 3 min). Il conserve l'animal, le WiFi, la position et les réglages de l'IA (NVS). Si seul le code a
 changé, l'application suffit (~20 s) :
 
@@ -290,7 +301,7 @@ Journal série attendu au démarrage :
 IA: IA : Google Gemini                                 (ou "Désactivée")
 PET: Animal rechargé (âge … s)                         (ou "PET: Aucun animal adopté : en attente (page web)")
 ASSETS: Fonds en PSRAM : 4356 Ko (PSRAM libre : 1524 Ko)
-ASSETS: Pack : 1325 images, 13431 Ko
+ASSETS: Pack : 1366 images, 13833 Ko                   (images + sons)
 ASSETS: Animal 0, âge 0 : 42 poses, tampon 64 Ko
 WIFI: Réseau de configuration : AnimalDeCompagnie_WiFi (ouvert), page http://192.168.4.1 ; WiFi maison : <box>
 WIFI: Connecté à <box>, IP 192.168.0.64
@@ -364,6 +375,7 @@ Firmware prêt à flasher (application + images) : voir [`firmware/`](firmware/R
 | `main/Kconfig.projbuild` | menu **Animal de compagnie** |
 | `assets/pet_assets.bin` <!-- ⚫ AJOUTÉ (25/10/2026) --> | pack d'images (généré), écrit dans la partition `assets` par `idf.py flash` |
 | `tools/assets/` | générateur des images : décor (`scene.mjs`), animaux articulés et leurs âges (`animals.mjs`), accessoires (`props.mjs`, `props2.mjs`, `props3.mjs`), rendu et conversion (`render.mjs`), pack (`gen.mjs`) |
+| `tools/assets/sounds/` <!-- ⚫ AJOUTÉ (25/10/2026) --> | sons réalistes (MP3), leur fabrication (`make_sounds.py`) et leurs licences (`CREDITS.md`) ; ajoutés au pack par `gen.mjs` |
 | `partitions_lvgl.csv` | NVS, application 2 Mo, partition `assets` (0xDF0000, ~14,6 Mo) |
 | `components/mt8901`, `components/button`, `components/ws2812` | encodeur (PCNT), bouton-poussoir, LED WS2812 (RMT) |
 | `components/lvgl` | LVGL 8.3.3 (+ `lv_qrcode`) |
