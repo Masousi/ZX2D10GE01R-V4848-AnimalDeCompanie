@@ -15,6 +15,8 @@
 #include "pet_led.h"
 #include "pet_ui.h"
 #include "wifi_cfg.h"   // ⚫ AJOUTÉ (25/10/2026)
+#include "weather.h"    // ⚫ AJOUTÉ (25/10/2026)
+#include "ai.h"         // ⚫ AJOUTÉ (25/10/2026)
 
 #define TAG "MAIN"
 
@@ -85,5 +87,7 @@ void app_main(void) {
     screen_init();
     pet_led_start();   // ⚫ AJOUTÉ (24/10/2026) : anneau de LED WS2812 (tâche sur le cœur 0)
     wifi_cfg_start();  // ⚫ AJOUTÉ (25/10/2026) : réseau "AnimalDeCompagnie_WiFi" + page de configuration (cœur 1)
+    weather_start();   // ⚫ AJOUTÉ (25/10/2026) : heure et météo réelles par Internet (cœur 1)
+    ai_start();        // ⚫ AJOUTÉ (25/10/2026) : IA du comportement (facultative, réglée sur la page web)
     xTaskCreatePinnedToCore(lvgl_task, NULL, 8 * 1024, NULL, 5, NULL, 1);
 }

@@ -1,12 +1,20 @@
 // ⚫ AJOUTÉ (25/10/2026) : décor de la cour (480x480, écran rond) : ciel, collines, arbres, palissade,
 // pelouse texturée, piste de course en sable, niche, gamelles. Version jour et version nuit.
 // Positions reprises par le firmware (main/pet_scene.h) : niche, gamelles, piste.
+// ⚫ MODIFIÉ (25/10/2026) : niche retirée (inutile pour les autres animaux) -> litière de paille pour dormir ;
+// + coin besoins (gravier) ; gamelles retirées du décor (objets séparés : elles peuvent être renversées).
 
 export const SPOTS = {
-    kennelDoor: [100, 296],   // pied du chien couché devant la niche
+    // kennelDoor: [100, 296],   // pied du chien couché devant la niche
+    bed: [96, 306],           // ⚫ AJOUTÉ (25/10/2026) : centre de la litière de paille
+    toilet: [418, 310],       // ⚫ AJOUTÉ (25/10/2026) : centre du coin besoins
+    mess: [150, 300, 380, 362], // ⚫ AJOUTÉ (25/10/2026) : zone des bêtises (trous, besoins) x0, y0, x1, y1
+    // shelter: [36, 258, 198, 322], // ⚫ AJOUTÉ (25/10/2026) : sous l'abri (pieds de l'animal) x0, y0, x1, y1
+    shelter: [36, 276, 158, 322], // ⚫ MODIFIÉ (25/10/2026) : abri réduit (SHELTER_K)
     food: [186, 378],         // centre de la gamelle de croquettes (⚫ 25/10/2026 : recentrée, le chien mange à sa gauche)
     water: [352, 372],        // centre de la gamelle d'eau
     track: [318, 252, 112, 26], // piste : centre x, y, demi-axes
+    cones: [[214, 258], [420, 256]], // ⚫ AJOUTÉ (25/10/2026) : base des deux cônes (bords de la piste)
 };
 
 // Petit générateur pseudo-aléatoire déterministe (même image à chaque génération)
@@ -108,6 +116,72 @@ function kennel() {
     <path d="M30 236 L96 176 L106 170" fill="none" stroke="#e8655a" stroke-width="1.6" opacity="0.8"/>`;
 }
 
+// ⚫ AJOUTÉ (25/10/2026) : litière de paille (lit de tous les animaux)
+function bed() {
+    const [cx, cy] = SPOTS.bed;
+    const r = rng(21);
+    let straw = '';
+    for (let i = 0; i < 260; i++) {
+        const a = r() * Math.PI * 2, d = Math.sqrt(r());
+        const x = cx + Math.cos(a) * d * 62, y = cy + Math.sin(a) * d * 20;
+        const L = 5 + r() * 9, t = (r() - 0.5) * 1.4;
+        const c = ['#e8c868', '#d9b24a', '#f2da8a', '#c49a34', '#b88a2a'][Math.floor(r() * 5)];
+        straw += `<path d="M${(x - Math.cos(t) * L / 2).toFixed(1)} ${(y - Math.sin(t) * L / 2).toFixed(1)} l${(Math.cos(t) * L).toFixed(1)} ${(Math.sin(t) * L).toFixed(1)}" stroke="${c}" stroke-width="${(0.8 + r() * 0.9).toFixed(1)}" stroke-linecap="round"/>`;
+    }
+    return `<ellipse cx="${cx}" cy="${cy + 4}" rx="70" ry="22" fill="#1d3a12" opacity="0.4" filter="url(#soft6)"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="66" ry="21" fill="url(#hay)"/>
+    <g>${straw}</g>`;
+}
+
+// ⚫ AJOUTÉ (25/10/2026) : abri (préau en bois, toit d'ardoises) au-dessus de la litière : l'animal s'y réfugie
+// quand il pleut et y dort. part = 'back' (fond de l'abri, derrière l'animal) ou 'front' (toit et poteaux avant,
+// dessinés devant l'animal quand il est dessous : voir gen.mjs).
+// ⚫ MODIFIÉ (25/10/2026) : abri réduit aux 3/4 (il prenait trop de place), autour du pied du poteau gauche
+const SHELTER_K = 0.75;
+function shelter(part, snow) {
+    return `<g transform="translate(36 322) scale(${SHELTER_K}) translate(-36 -322)">${shelterFull(part, snow)}</g>`;
+}
+function shelterFull(part, snow) {
+    if (part === 'back') {
+        let planks = '';
+        for (let x = 40; x < 196; x += 13) planks += `<path d="M${x} 176 V298" stroke="#5a3a1e" stroke-width="0.9" opacity="0.6"/>`;
+        return `<ellipse cx="117" cy="318" rx="104" ry="14" fill="#1d3a12" opacity="0.45" filter="url(#soft6)"/>
+    <rect x="36" y="172" width="162" height="128" fill="url(#shelterWall)"/>${planks}
+    <rect x="36" y="172" width="162" height="40" fill="url(#shelterShade)"/>
+    <rect x="44" y="174" width="6" height="126" fill="#5e3c1e"/><rect x="186" y="174" width="6" height="124" fill="#5e3c1e"/>`;
+    }
+    let shingles = '';
+    for (let i = 1; i < 5; i++) {
+        const y = 134 + i * 8, x0 = 34 - i * 4, x1 = 200 + i * 3.5;
+        shingles += `<path d="M${x0} ${y} L${x1} ${y}" stroke="#2a2e36" stroke-width="0.9" opacity="0.6"/>`;
+        for (let x = x0 + (i % 2) * 7; x < x1; x += 14) shingles += `<path d="M${x} ${y - 8} V${y}" stroke="#2a2e36" stroke-width="0.6" opacity="0.45"/>`;
+    }
+    return `<path d="M26 176 H36 V320 H26 Z" fill="url(#post)"/><path d="M198 176 H208 V314 H198 Z" fill="url(#post)"/>
+    <path d="M34 134 L200 134 L216 172 L18 172 Z" fill="url(#roof)"/>${shingles}
+    <path d="M18 172 L216 172 L216 181 L18 181 Z" fill="#6a4426"/><path d="M18 172 L216 172" stroke="#a87040" stroke-width="1.2"/>
+    ${snow ? '<path d="M34 134 L200 134 L210 158 Q120 150 24 158 Z" fill="#f4f8fc" opacity="0.95"/><path d="M18 172 Q117 166 216 172 L214 175 Q117 170 20 175 Z" fill="#ffffff"/>' : ''}`;
+}
+
+// ⚫ AJOUTÉ (25/10/2026) : coin besoins : bac de gravier bordé de pierres + petit panneau
+function toilet() {
+    const [cx, cy] = SPOTS.toilet;
+    const r = rng(33);
+    let grav = '', stones = '';
+    for (let i = 0; i < 160; i++) {
+        const a = r() * Math.PI * 2, d = Math.sqrt(r());
+        grav += `<circle cx="${(cx + Math.cos(a) * d * 34).toFixed(1)}" cy="${(cy + Math.sin(a) * d * 11).toFixed(1)}" r="${(0.6 + r() * 1.1).toFixed(1)}" fill="${['#b8ad98', '#8f8574', '#d4cab4', '#7a705f'][Math.floor(r() * 4)]}"/>`;
+    }
+    for (let i = 0; i < 18; i++) {
+        const a = i / 18 * Math.PI * 2;
+        stones += `<ellipse cx="${(cx + Math.cos(a) * 39).toFixed(1)}" cy="${(cy + Math.sin(a) * 14).toFixed(1)}" rx="${(4 + r() * 2).toFixed(1)}" ry="${(2.6 + r()).toFixed(1)}" fill="url(#stone)"/>`;
+    }
+    return `<ellipse cx="${cx}" cy="${cy + 3}" rx="44" ry="16" fill="#1d3a12" opacity="0.4" filter="url(#soft3)"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="37" ry="12.5" fill="#a89c84"/>${grav}${stones}
+    <rect x="${cx + 26}" y="${cy - 40}" width="3" height="30" fill="#7a5230"/>
+    <rect x="${cx + 14}" y="${cy - 50}" width="26" height="15" rx="2" fill="#d9a46a" stroke="#7a5230" stroke-width="1"/>
+    <path d="M${cx + 20} ${cy - 44} q3 -4 6 0 q3 4 6 0" stroke="#5a3418" stroke-width="1.4" fill="none"/>`;
+}
+
 function bowl(cx, cy, body, rim, inner, extra) {
     // ⚫ 25/10/2026 : gamelles agrandies (rayon 34) avec reflet sur le bord
     const R = 34, r2 = 28;
@@ -128,7 +202,8 @@ function track() {
     <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#000" opacity="0.18" filter="url(#sandNoise)"/>
     <ellipse cx="${cx}" cy="${cy}" rx="${rx - 30}" ry="${ry - 11}" fill="url(#grassIsland)"/>
     <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="#b08850" stroke-width="1.2" opacity="0.6"/>
-    ${cone(cx - rx + 8, cy + 6)}${cone(cx + rx - 10, cy + 4)}`;
+    `;   // ⚫ MODIFIÉ (25/10/2026) : cônes RETIRÉS du décor (objets séparés : il peut les renverser), voir SPOTS.cones
+    // ${cone(cx - rx + 8, cy + 6)}${cone(cx + rx - 10, cy + 4)}`;
 }
 
 function cone(x, y) {
@@ -156,11 +231,26 @@ function trees(night) {
 
 // ⚫ MODIFIÉ (25/10/2026) : kennelOnly = niche seule sur fond transparent (masque de la niche "au premier plan",
 // affichée devant le chien quand il passe derrière : voir gen.mjs)
-export function sceneSvg({ night = false, kennelOnly = false } = {}) {
+// ⚫ MODIFIÉ (25/10/2026) : heure et météo réelles : tod = 'day' | 'dusk' (aube / crépuscule) | 'night',
+// wx = 'clear' | 'cloudy' (couvert) | 'rain' | 'snow' ; shelterOnly = toit et poteaux avant de l'abri seuls
+// (masque du premier plan). kennelOnly n'a plus d'effet (niche RETIRÉE).
+export function sceneSvg({ night = false, tod, wx = 'clear', kennelOnly = false, shelterOnly = false } = {}) {
+    tod = night ? 'night' : (tod || 'day');
+    night = tod === 'night';
+    const dusk = tod === 'dusk', grey = wx !== 'clear', snow = wx === 'snow', rain = wx === 'rain';
     const r = rng(42);
-    const sky = night
-        ? `<stop offset="0" stop-color="#070b24"/><stop offset="0.6" stop-color="#16205a"/><stop offset="1" stop-color="#2d3c80"/>`
-        : `<stop offset="0" stop-color="#2f7fd6"/><stop offset="0.55" stop-color="#7cc0f5"/><stop offset="1" stop-color="#d6f0ff"/>`;
+    const SKY = {
+        day:   `<stop offset="0" stop-color="#2f7fd6"/><stop offset="0.55" stop-color="#7cc0f5"/><stop offset="1" stop-color="#d6f0ff"/>`,
+        dayG:  `<stop offset="0" stop-color="#7d8896"/><stop offset="0.6" stop-color="#a7b0bb"/><stop offset="1" stop-color="#c9cfd6"/>`,
+        rain:  `<stop offset="0" stop-color="#4d5764"/><stop offset="0.6" stop-color="#6e7884"/><stop offset="1" stop-color="#8f98a2"/>`,
+        snow:  `<stop offset="0" stop-color="#a4afbd"/><stop offset="0.6" stop-color="#c8d0da"/><stop offset="1" stop-color="#e2e8ee"/>`,
+        dusk:  `<stop offset="0" stop-color="#2a3a7a"/><stop offset="0.45" stop-color="#c8607a"/><stop offset="0.8" stop-color="#f6a04a"/><stop offset="1" stop-color="#ffd27a"/>`,
+        duskG: `<stop offset="0" stop-color="#4a4e66"/><stop offset="0.6" stop-color="#9a7a7e"/><stop offset="1" stop-color="#c8a080"/>`,
+        night: `<stop offset="0" stop-color="#070b24"/><stop offset="0.6" stop-color="#16205a"/><stop offset="1" stop-color="#2d3c80"/>`,
+        nightG:`<stop offset="0" stop-color="#0c0e16"/><stop offset="0.6" stop-color="#1a1e2a"/><stop offset="1" stop-color="#2a2e3a"/>`,
+    };
+    const sky = night ? (grey ? SKY.nightG : SKY.night) : dusk ? (grey ? SKY.duskG : SKY.dusk)
+              : rain ? SKY.rain : snow ? SKY.snow : grey ? SKY.dayG : SKY.day;
     const grassTop = night ? '#1f4a2c' : '#86cc52', grassBot = night ? '#0e2616' : '#3c8a26';
     const hill1 = night ? '#18304a' : '#7fb8a0', hill2 = night ? '#14303a' : '#5f9e5a';
 
@@ -205,6 +295,12 @@ export function sceneSvg({ night = false, kennelOnly = false } = {}) {
     <linearGradient id="roofSide" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#d83a30"/><stop offset="1" stop-color="#8e1e18"/>
     </linearGradient>
+    <radialGradient id="hay" cx="0.45" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#e8c66a"/><stop offset="1" stop-color="#a8822e"/>
+    </radialGradient>
+    <radialGradient id="stone" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#d8d2c6"/><stop offset="1" stop-color="#7f786c"/>
+    </radialGradient>
     <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#ead39a"/><stop offset="1" stop-color="#c9a764"/>
     </linearGradient>
@@ -229,6 +325,22 @@ export function sceneSvg({ night = false, kennelOnly = false } = {}) {
     <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.5">
       <stop offset="0.72" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="${night ? 0.55 : 0.35}"/>
     </radialGradient>
+    <linearGradient id="shelterWall" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a5a30"/><stop offset="0.5" stop-color="#a06a3a"/><stop offset="1" stop-color="#7a4c28"/>
+    </linearGradient>
+    <linearGradient id="shelterShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a0e04" stop-opacity="0.6"/><stop offset="1" stop-color="#1a0e04" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="post" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7a4e2a"/><stop offset="0.5" stop-color="#b07a48"/><stop offset="1" stop-color="#6a4022"/>
+    </linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a6270"/><stop offset="1" stop-color="#3a404c"/>
+    </linearGradient>
+    <filter id="snowNoise" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05 0.12" numOctaves="3" seed="21"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 3.2 -0.9"/>
+    </filter>
     <radialGradient id="lampGlow" cx="0.5" cy="0.5" r="0.5">
       <stop offset="0" stop-color="#ffd27a" stop-opacity="0.75"/><stop offset="1" stop-color="#ffb040" stop-opacity="0"/>
     </radialGradient>
@@ -253,11 +365,15 @@ export function sceneSvg({ night = false, kennelOnly = false } = {}) {
   <!--@@KENNEL@@-->
 
   <rect width="480" height="480" fill="url(#sky)"/>
-  ${night ? stars(r, 140) : ''}
-  ${night
+  ${night && !grey ? stars(r, 140) : ''}
+  ${grey ? '' : night
         ? `<circle cx="372" cy="78" r="70" fill="url(#sunGlow)" opacity="0.55"/><circle cx="372" cy="78" r="20" fill="#f6f2dc"/><circle cx="380" cy="72" r="19" fill="#d9d4bc" opacity="0.35"/><circle cx="365" cy="85" r="4" fill="#cfc8ae" opacity="0.6"/><circle cx="376" cy="70" r="3" fill="#cfc8ae" opacity="0.5"/>`
+        : dusk ? `<circle cx="400" cy="150" r="110" fill="url(#sunGlow)" opacity="0.9"/><circle cx="400" cy="150" r="26" fill="#ffd890"/>`
         : `<circle cx="378" cy="72" r="90" fill="url(#sunGlow)"/><circle cx="378" cy="72" r="24" fill="#fffbe6"/>`}
-  ${night ? '' : `<g filter="url(#cloudBlur)" fill="#ffffff" opacity="0.9">
+  ${grey ? `<g filter="url(#cloudBlur)" fill="${night ? '#20242e' : rain ? '#5a636e' : '#9aa3ad'}" opacity="0.9">
+      <ellipse cx="80" cy="60" rx="110" ry="30"/><ellipse cx="260" cy="44" rx="130" ry="34"/><ellipse cx="420" cy="70" rx="110" ry="30"/>
+      <ellipse cx="170" cy="110" rx="120" ry="22"/><ellipse cx="380" cy="118" rx="110" ry="20"/></g>` : ''}
+  ${night || grey ? '' : `<g filter="url(#cloudBlur)" fill="#ffffff" opacity="0.9">
       <ellipse cx="110" cy="82" rx="46" ry="14"/><ellipse cx="88" cy="74" rx="22" ry="14"/><ellipse cx="124" cy="70" rx="26" ry="18"/>
       <ellipse cx="250" cy="112" rx="34" ry="9"/><ellipse cx="262" cy="104" rx="18" ry="11"/>
     </g>`}
@@ -279,19 +395,33 @@ export function sceneSvg({ night = false, kennelOnly = false } = {}) {
     <rect x="0" y="222" width="480" height="20" fill="url(#fenceShadow)"/>
   </g>
   ${grassTufts(r, 1400, 226, 480, night)}
+  ${snow ? `<!-- ⚫ AJOUTÉ (25/10/2026) : neige sur la pelouse (sous l'abri, la piste et les objets) -->
+  <g clip-path="url(#lawnClip)"><rect x="0" y="222" width="480" height="258" fill="#eef3f8" opacity="0.5"/>
+    <rect x="0" y="222" width="480" height="258" filter="url(#snowNoise)" opacity="0.7"/></g>
+  <path d="M0 150 L480 150 L480 156 L0 156 Z" fill="#f4f8fc" opacity="0.8"/>` : ''}
   ${track()}
   ${flowers(r, 34, night)}
-  ${kennel()}
-  ${bowl(SPOTS.food[0], SPOTS.food[1], 'redBody', 'redRim', '#3a0c0c', `<g transform="translate(${SPOTS.food[0]} ${SPOTS.food[1] + 8})" fill="#ffd9d0" opacity="0.8"><path d="M-7 -1.5 h14 a2 2 0 1 1 1.5 2.5 a2 2 0 1 1 -1.5 2.5 h-14 a2 2 0 1 1 -1.5 -2.5 a2 2 0 1 1 1.5 -2.5 z" transform="translate(0 -1)"/></g>`)}
-  ${bowl(SPOTS.water[0], SPOTS.water[1], 'blueBody', 'blueRim', 'url(#water)',
-        `<ellipse cx="${SPOTS.water[0] - 9}" cy="${SPOTS.water[1] - 5}" rx="10" ry="2" fill="#fff" opacity="0.8"/><ellipse cx="${SPOTS.water[0] + 8}" cy="${SPOTS.water[1] - 2}" rx="5" ry="1" fill="#fff" opacity="0.5"/>`)}
+  <!-- ⚫ RETIRÉ (25/10/2026) : niche (kennel()) et gamelles (bowl(), désormais des objets : main/pet_ui.c) -->
+  ${shelter('back', snow)}
+  ${bed()}
+  ${shelter('front', snow)}
+  ${toilet()}
+  ${rain ? `<!-- pluie : sol mouillé, flaques -->
+  <rect x="0" y="222" width="480" height="258" fill="#1a2a3a" opacity="0.18"/>
+  ${[[250, 400, 40, 7], [390, 352, 26, 5], [140, 432, 30, 6], [300, 300, 22, 4]].map(([x, y, rx, ry]) =>
+        `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#9aa8b6" opacity="0.55"/><ellipse cx="${x - rx * 0.3}" cy="${y - 1}" rx="${rx * 0.4}" ry="1" fill="#e8f0f8" opacity="0.6"/>`).join('')}` : ''}
+  ${grey && !night ? `<rect width="480" height="480" fill="#3a4250" opacity="${rain ? 0.22 : 0.12}"/>` : ''}
+  ${dusk ? `<rect width="480" height="480" fill="#ff8a40" opacity="0.14"/><rect x="0" y="222" width="480" height="258" fill="#2a1a3a" opacity="0.18"/>` : ''}
   ${night ? `
-  <!-- nuit : voile bleu + lanterne sur la niche -->
+  <!-- nuit : voile bleu + lanterne sous l'abri -->
   <rect width="480" height="480" fill="#081030" opacity="0.55"/>
-  <circle cx="190" cy="196" r="70" fill="url(#lampGlow)"/>
-  <rect x="186" y="186" width="8" height="12" rx="2" fill="#ffe6a0"/><rect x="185" y="183" width="10" height="3" fill="#3a2a1a"/>` : ''}
+  <circle cx="117" cy="196" r="80" fill="url(#lampGlow)"/>
+  <rect x="113" y="184" width="8" height="12" rx="2" fill="#ffe6a0"/><rect x="112" y="181" width="10" height="3" fill="#3a2a1a"/>` : ''}
   <rect width="480" height="480" fill="url(#vignette)"/>
 </svg>`;
     // niche seule : mêmes définitions (dégradés, filtres), sans le reste du décor
-    return kennelOnly ? out.slice(0, out.indexOf('<!--@@KENNEL@@-->')) + kennel() + '</svg>' : out;
+    // return kennelOnly ? out.slice(0, out.indexOf('<!--@@KENNEL@@-->')) + kennel() + '</svg>' : out;
+    // ⚫ MODIFIÉ (25/10/2026) : premier plan de l'abri seul (masque)
+    if (shelterOnly) return out.slice(0, out.indexOf('<!--@@KENNEL@@-->')) + shelter('front', snow) + '</svg>';
+    return out;
 }

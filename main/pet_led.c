@@ -81,6 +81,11 @@ static rgbf_t mood_color(int mood, int i, bool lit, float t)
         return scale(rgb(0x30FF60), 0.55f + 0.45f * sinf(t * 3.0f - i * 0.8f));
     case PET_MOOD_HUNGRY:     // orange, clignotement lent
         return scale(rgb(0xFF6A00), (fmodf(t, 1.6f) < 0.8f) ? 1.0f : 0.15f);
+    // ⚫ AJOUTÉ (25/10/2026) : doit faire ses besoins : ambre, deux clignotements rapides puis pause
+    case PET_MOOD_POTTY: {
+        float ph = fmodf(t, 1.4f);
+        return scale(rgb(0xFF9A10), (ph < 0.15f || (ph > 0.3f && ph < 0.45f)) ? 1.0f : 0.1f);
+    }
     // ⚫ AJOUTÉ (25/10/2026) : a soif : cyan, clignotement lent
     case PET_MOOD_THIRSTY:
         return scale(rgb(0x00C8FF), (fmodf(t, 1.6f) < 0.8f) ? 1.0f : 0.15f);
@@ -124,6 +129,13 @@ static rgbf_t react_color(int react, int i, float k, float t)
     case PET_REACT_DRINK: {
         float d = fabsf(i - (n - 1) / 2.0f);
         return scale(mix(rgb(0x0050FF), rgb(0x80E0FF), 0.5f + 0.5f * sinf(d * 1.2f - t * 10)), 0.35f + 0.65f * (1 - k));
+    }
+    // ⚫ AJOUTÉ (25/10/2026) : besoins faits au bon endroit : vert qui se remplit ; cour nettoyée : balayage blanc
+    case PET_REACT_POTTY:
+        return scale(rgb(0x40E060), (i / n < k * 1.4f) ? 1.0f : 0.1f);
+    case PET_REACT_CLEAN: {
+        float d = fabsf(fmodf(k * n * 2, n) - i);
+        return scale(rgb(0xFFFFFF), expf(-d * 0.6f) * 0.9f + 0.05f);
     }
     case PET_REACT_SLEEP:     // l'anneau s'éteint en indigo d'un bout à l'autre
         return scale(rgb(0x3010A0), (i / n > k) ? 0.8f : 0.05f);

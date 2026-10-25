@@ -4,37 +4,42 @@
      stress / music / led .bin) et leur tableau : plus de démo dans ce projet. -->
 # Firmware précompilé
 
-Image complète (bootloader + table de partitions + application), à flasher à l'adresse `0x0`.
+<!-- ⚫ MODIFIÉ (25/10/2026) : l'image contient aussi le pack d'images (partition "assets" à 0x410000) -->
+<!-- ⚫ MODIFIÉ (25/10/2026) : partition "assets" désormais à 0x210000 (application 2 Mo) -->
+Image complète (bootloader + table de partitions + application + **pack d'images** des animaux, partition
+`assets` à 0x210000), à flasher à l'adresse `0x0`.
 
 | Fichier | Contenu | Taille | SHA-256 |
 |---|---|---|---|
-<!-- ⚫ MODIFIÉ (25/10/2026) : chien dans la cour (images), soif, écran sans décalage, direct_mode -->
-| `ZX2D10GE01R_pet.bin` | **Chien dans sa cour** (Kiko, temps réel, LED à 160/255) | 4 803 632 o | `81e03d1e2fd48422ef1956485d725152b5d505271e47a18bc828e12d878c98cd` |
+<!-- ⚫ MODIFIÉ (25/10/2026) : 6 animaux à adopter, page web, QR code -->
+<!-- ⚫ MODIFIÉ (25/10/2026) : 10 espèces x 3 âges, météo réelle, IA, sons, commandes web -->
+| `ZX2D10GE01R_pet.bin` | **Animal de compagnie** : 10 espèces × 3 âges, cour avec abri, heure et météo réelles, IA, sons, page web (LED à 160/255) | 15 916 999 o | `6d0f84b744dea5eecb8307d24d536c10924cad90ae0571f9749ac40eec0fe2d8` |
 
-Vérifié sur la carte (25/10/2026) : flash (hash vérifié), démarrage unique sans erreur, lignes
-`WIFI: Réseau de configuration : AnimalDeCompagnie_WiFi (WPA2)…`, `PET_UI: Chien prêt (Kiko), 67 images` puis
-`RGB: 25 images/s, rendu 27 ms/image` dans le journal série
-(⚫ 25/10/2026 : bounce buffers de 30 lignes, cache 64 o, sauvegarde toutes les 5 min, jeux Balle / Frisbee / Os, serveur WiFi de configuration).
+<!-- ⚫ MODIFIÉ (25/10/2026) : nouvelle vérification -->
+Vérifié sur la carte (25/10/2026, mêmes sources) : démarrage sans erreur, lignes
+`ASSETS: Pack : 1325 images, 13431 Ko`, `WIFI: Connecté à …`, `METEO: … ciel dégagé …`, `IA: Google Gemini : …` puis
+`RGB: 26 images/s, rendu 17 ms/image` dans le journal série.
 
 - Cible : ESP32-S3 N16R8 (flash 16 Mo, PSRAM octale 8 Mo), ESP-IDF v5.0.9.
 
 ## Flasher
 
 ```sh
-esptool.py --chip esp32s3 -p COM4 -b 460800 write_flash 0x0 ZX2D10GE01R_pet.bin
+esptool.py --chip esp32s3 -p COM4 -b 921600 write_flash 0x0 ZX2D10GE01R_pet.bin
 ```
 
-Remplacer `COM4` par le port de la carte.
+<!-- ⚫ MODIFIÉ (25/10/2026) : ~4 min (était ≈ 2 min) -->
+Remplacer `COM4` par le port de la carte (≈ 4 min).
 Ou avec l'outil web : https://espressif.github.io/esptool-js/ (adresse `0x0`).
 
 <!-- ⚫ MODIFIÉ (25/10/2026) : constaté sur la carte, l'ancienne phrase était fausse :
 La sauvegarde de l'animal (NVS) n'est pas écrasée par ce flash : pour repartir avec un nouvel animal,
 lancer d'abord `esptool.py --chip esp32s3 -p COM4 erase_flash`.
 -->
-⚠️ Cette image complète **efface la sauvegarde du chien** (NVS, à 0x9000) : `merge_bin` comble l'espace entre
-le bootloader et l'application avec du vide. Au démarrage suivant : `PET: Nouvel animal : Kiko`.
-Pour mettre à jour en **gardant** le chien, flasher depuis les sources sans toucher à la NVS :
-`idf.py -p COM4 app-flash` (application seule) ou `idf.py -p COM4 flash`.
+⚠️ Cette image complète **efface la sauvegarde** (NVS, à 0x9000 : animal adopté, WiFi de la maison, position,
+réglages de l'IA et du son) : `merge_bin` comble l'espace entre le bootloader et l'application avec du vide. Au
+démarrage suivant, l'écran d'adoption s'affiche. Pour mettre à jour en **gardant** l'animal, flasher depuis les
+sources : `idf.py -p COM4 flash`.
 
 ## Régénérer
 

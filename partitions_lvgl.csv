@@ -4,4 +4,11 @@ nvs,      data, nvs,     ,        0x6000,
 phy_init, data, phy,     ,        0x1000,
 # ⚫ MODIFIÉ (24/10/2026) : factory 3M -> 8M pour contenir toutes les démos LVGL (assets music lourds), flash 16 Mo
 # factory,  app,  factory, ,        3M,
-factory,  app,  factory, ,        8M,
+# factory,  app,  factory, ,        8M,
+# ⚫ MODIFIÉ (25/10/2026) : les images ne sont plus dans l'application : 4 Mo suffisent ; le reste de la flash
+# (≈ 12 Mo) accueille le pack d'images des animaux (assets/pet_assets.bin, flashé par idf.py flash)
+# factory,  app,  factory, ,        4M,
+# assets,   data, 0x40,    ,        0xBF0000,
+# ⚫ MODIFIÉ (25/10/2026) : 10 animaux, 8 fonds (météo) : pack de ~12,3 Mo ; l'application (~1,3 Mo) tient dans 2 Mo
+factory,  app,  factory, ,        2M,
+assets,   data, 0x40,    ,        0xDF0000,

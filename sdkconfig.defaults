@@ -67,3 +67,10 @@ CONFIG_ESP32_WIFI_TASK_PINNED_TO_CORE_1=y
 # CONFIG_ESP32_WIFI_NVS_ENABLED is not set
 CONFIG_LWIP_TCPIP_TASK_AFFINITY_CPU1=y
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+# ⚫ AJOUTÉ (25/10/2026) : QR code à l'écran pour rejoindre le réseau de la carte (lv_qrcode)
+CONFIG_LV_USE_QRCODE=y
+# ⚫ AJOUTÉ (25/10/2026) : météo par Internet (HTTPS) : mémoire TLS en PSRAM (la RAM interne sert l'écran et le WiFi)
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+
+# ⚫ AJOUTÉ (25/10/2026) : serveur web (6 connexions) + DNS du portail + HTTPS météo / recherche de ville en même temps
+CONFIG_LWIP_MAX_SOCKETS=16

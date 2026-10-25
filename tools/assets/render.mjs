@@ -57,3 +57,70 @@ export function toLvgl({ w, h, rgba }, withAlpha) {
     }
     return out;
 }
+
+// ⚫ AJOUTÉ (25/10/2026) : image en 256 couleurs (palette ARGB8888, entrée 0 = transparent) par coupe médiane
+// sur (R, G, B, A) : 3 fois moins de place que RGB565 + alpha. Format écrit : palette 256 x 4 octets
+// (B, G, R, A, ordre de lv_color32_t) puis 1 index par pixel. Le firmware la décode au démarrage.
+// ⚫ AJOUTÉ (25/10/2026) : 256 couleurs compressé (format 3) : palette, puis suite de blocs :
+//   octet b >= 0x80 : (b & 0x7F) + 1 pixels transparents ; b < 0x80 : b + 1 index qui suivent tels quels.
+// La moitié d'une image d'animal est transparente : ~2 fois moins de place, et décodage aussi rapide.
+export function toIndexedRle(img) {
+    const raw = toIndexed(img);
+    const pal = raw.subarray(0, 1024), d = raw.subarray(1024);
+    const out = [];
+    let i = 0;
+    while (i < d.length) {
+        let j = i;
+        if (d[i] === 0) {
+            while (j < d.length && d[j] === 0 && j - i < 128) j++;
+            out.push(0x80 | (j - i - 1));
+        } else {
+            while (j < d.length && d[j] !== 0 && j - i < 128) j++;
+            out.push(j - i - 1);
+            for (let k = i; k < j; k++) out.push(d[k]);
+        }
+        i = j;
+    }
+    return Buffer.concat([pal, Buffer.from(out)]);
+}
+
+export function toIndexed({ w, h, rgba }) {
+    const px = [];
+    const idx = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+        const a = rgba[i * 4 + 3];
+        if (a < 6) continue;
+        const un = 255 / a;
+        px.push([Math.min(255, rgba[i * 4] * un), Math.min(255, rgba[i * 4 + 1] * un), Math.min(255, rgba[i * 4 + 2] * un), a, i]);
+    }
+    // coupe médiane : on coupe toujours la boîte la plus étendue (alpha pondéré, il compte pour les bords)
+    let boxes = [px];
+    const W = [1, 1.2, 0.8, 1.6];
+    const range = b => {
+        let best = -1, ch = 0;
+        for (let c = 0; c < 4; c++) {
+            let lo = 1e9, hi = -1e9;
+            for (const p of b) { if (p[c] < lo) lo = p[c]; if (p[c] > hi) hi = p[c]; }
+            const r = (hi - lo) * W[c] * Math.sqrt(b.length);
+            if (r > best) { best = r; ch = c; }
+        }
+        return [best, ch];
+    };
+    while (boxes.length < 255) {
+        let bi = -1, bestR = 0, bestC = 0;
+        boxes.forEach((b, i) => { if (b.length > 1) { const [r, c] = range(b); if (r > bestR) { bestR = r; bi = i; bestC = c; } } });
+        if (bi < 0) break;
+        const b = boxes[bi].sort((p, q) => p[bestC] - q[bestC]);
+        const m = b.length >> 1;
+        boxes.splice(bi, 1, b.slice(0, m), b.slice(m));
+    }
+    const pal = Buffer.alloc(256 * 4);   // entrée 0 : transparente
+    boxes.forEach((b, i) => {
+        const s = [0, 0, 0, 0];
+        for (const p of b) for (let c = 0; c < 4; c++) s[c] += p[c];
+        const n = b.length || 1, k = (i + 1) * 4;
+        pal[k] = Math.round(s[2] / n); pal[k + 1] = Math.round(s[1] / n); pal[k + 2] = Math.round(s[0] / n); pal[k + 3] = Math.round(s[3] / n);
+        for (const p of b) idx[p[4]] = i + 1;
+    });
+    return Buffer.concat([pal, Buffer.from(idx)]);
+}

@@ -17,6 +17,7 @@ typedef struct {
     char sta_ssid[33];
     char sta_ip[16];
     int8_t sta_rssi;
+    uint8_t sta_reason;      // ⚫ AJOUTÉ (25/10/2026) : raison de la dernière déconnexion (WIFI_REASON_*), 0 = aucune
 } wifi_cfg_status_t;
 
 // Démarre le WiFi et le serveur (nvs_flash_init() doit avoir été appelé). Sans effet si CONFIG_PET_WIFI=n.

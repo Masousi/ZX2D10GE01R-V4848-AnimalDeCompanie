@@ -4,11 +4,8 @@
 # APP_ENCODER_LED_IDLE_S) : plus aucune démo dans ce firmware.
 menu "Animal de compagnie"
 
-    config PET_NAME
-        string "Nom de l'animal"
-        default "Kiko"
-        help
-            Nom affiché en haut de l'écran (12 caractères max conseillés).
+    # ⚫ RETIRÉ (25/10/2026) : PET_NAME ("Nom de l'animal", défaut "Kiko") : le nom et l'espèce se choisissent
+    # à l'adoption, sur la page web de la carte (une seule fois, verrouillés jusqu'à la réinitialisation).
 
     config PET_TIME_SCALE
         int "Accélération du temps (1 = temps réel)"
@@ -17,6 +14,21 @@ menu "Animal de compagnie"
         help
             Multiplie la vitesse à laquelle l'animal a faim, se fatigue, s'ennuie et grandit.
             Pratique pour tester (ex. 30 : une heure passe en 2 minutes).
+
+    # ⚫ AJOUTÉ (25/10/2026) : âges
+    config PET_BABY_HOURS
+        int "Durée de l'âge bébé (heures de jeu)"
+        range 1 720
+        default 24
+        help
+            L'animal est bébé pendant ce temps (petit, grosse tête, dort beaucoup, ne se retient pas).
+
+    config PET_ADO_HOURS
+        int "Âge adulte atteint après (heures de jeu)"
+        range 2 2000
+        default 96
+        help
+            Entre l'âge bébé et cette durée, l'animal est adolescent (élancé, joueur, fait des bêtises).
 
     config PET_SAVE_PERIOD_S
         int "Sauvegarde en flash toutes les N secondes"
@@ -59,12 +71,8 @@ menu "Animal de compagnie"
             string "Nom du réseau WiFi de la carte"
             default "AnimalDeCompagnie_WiFi"
             depends on PET_WIFI
-        config PET_WIFI_AP_PASS
-            string "Mot de passe du réseau de la carte (8 caractères min., vide = ouvert)"
-            default "kiko1234"
-            depends on PET_WIFI
-            help
-                Laisser vide crée un réseau ouvert : n'importe qui à portée pourrait alors changer la configuration.
+        # ⚫ RETIRÉ (25/10/2026) : PET_WIFI_AP_PASS (mot de passe, défaut "kiko1234") : réseau ouvert, rejoint en
+        # scannant le QR code affiché par la carte (menu WiFi).
         config PET_WIFI_AP_CHANNEL
             int "Canal du réseau de la carte"
             range 1 13

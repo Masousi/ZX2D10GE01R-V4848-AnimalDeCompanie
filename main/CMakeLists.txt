@@ -5,7 +5,8 @@
 # keypad_encoder|stress|music ...) supprimés).
 
 # ⚫ AJOUTÉ (25/10/2026) : images du chien et de la cour (générées par tools/assets, cf. main/pet_assets.h)
-file(GLOB PET_ASSET_FILES "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.bin")
+# file(GLOB PET_ASSET_FILES "${CMAKE_CURRENT_SOURCE_DIR}/assets/*.bin")
+# ⚫ RETIRÉ (25/10/2026) : les images sont dans la partition "assets" (voir ../CMakeLists.txt), plus dans l'application
 
 idf_component_register(
     # SRC_DIRS ${DIRS} ${LVGL_DEMOS} "."
@@ -18,10 +19,17 @@ idf_component_register(
     # ⚫ MODIFIÉ (24/10/2026) : + nvs_flash (sauvegarde de l'animal)
     # REQUIRES esp_lcd driver lvgl esp_timer button mt8901 ws2812 nvs_flash
     # ⚫ MODIFIÉ (25/10/2026) : + WiFi, serveur web (configuration par téléphone, main/wifi_cfg.c)
+    # REQUIRES esp_lcd driver lvgl esp_timer button mt8901 ws2812 nvs_flash
+    #          esp_wifi esp_netif esp_event esp_http_server lwip
+    # ⚫ MODIFIÉ (25/10/2026) : + esp_partition (lecture du pack d'images)
+    # REQUIRES esp_lcd driver lvgl esp_timer button mt8901 ws2812 nvs_flash
+    #          esp_wifi esp_netif esp_event esp_http_server lwip esp_partition
+    # ⚫ MODIFIÉ (25/10/2026) : + client HTTPS, JSON, certificats (heure et météo réelles, main/weather.c)
     REQUIRES esp_lcd driver lvgl esp_timer button mt8901 ws2812 nvs_flash
-             esp_wifi esp_netif esp_event esp_http_server lwip
+             esp_wifi esp_netif esp_event esp_http_server lwip esp_partition
+             esp_http_client json mbedtls
     # ⚫ AJOUTÉ (25/10/2026)
-    EMBED_FILES ${PET_ASSET_FILES}
+    # EMBED_FILES ${PET_ASSET_FILES}
     EMBED_TXTFILES wifi_page.html
 )
 

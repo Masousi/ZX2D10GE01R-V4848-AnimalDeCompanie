@@ -1,117 +1,694 @@
 <!DOCTYPE html>
 <!-- ⚫ AJOUTÉ (25/10/2026) : page de configuration servie par la carte (main/wifi_cfg.c), http://192.168.4.1 -->
+<!-- ⚫ MODIFIÉ (25/10/2026) : tableau de bord : la cour en direct (mêmes images que l'écran, redessinées ici en
+     grand), jauges, adoption (nom + espèce, une fois), WiFi de la maison, réinitialisation. -->
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Animal de compagnie · Configuration</title>
+<title>Animal de compagnie</title>
 <style>
-  :root { --bg:#f3efe6; --card:#fff; --ink:#2b2418; --muted:#7a6f5e; --line:#e4dccd; --accent:#c4471f; --ok:#2f8f4e; --warn:#c28a00; }
+  :root { --bg:#f4efe6; --card:#fffdf9; --ink:#2b2418; --muted:#7a6f5e; --line:#e6ddcc; --accent:#d2552a; --accent2:#2f7fd6;
+          --ok:#2f8f4e; --warn:#c28a00; --shadow:0 2px 10px rgba(60,40,10,.08); }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#14120e; --card:#211d17; --ink:#f1ebe0; --muted:#a99d8a; --line:#3a3328; --accent:#ff7a4a; --ok:#5fd18a; --warn:#f0c14a; }
+    :root { --bg:#14120e; --card:#1f1b15; --ink:#f1ebe0; --muted:#a99d8a; --line:#38312a; --accent:#ff7a4a; --accent2:#6fb0ff;
+            --ok:#5fd18a; --warn:#f0c14a; --shadow:none; }
   }
   * { box-sizing:border-box; }
   body { margin:0; font:16px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); }
-  main { max-width:520px; margin:0 auto; padding:20px 16px 40px; }
-  h1 { font-size:22px; margin:4px 0 2px; }
-  .sub { color:var(--muted); margin:0 0 18px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
-  .card h2 { font-size:16px; margin:0 0 10px; }
-  .row { display:flex; justify-content:space-between; gap:12px; padding:4px 0; }
-  .row span:first-child { color:var(--muted); }
-  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--muted); }
+  main { max-width:1100px; margin:0 auto; padding:16px 16px 48px; }
+  header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin:6px 0 16px; }
+  header h1 { font-size:26px; margin:0; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:var(--card);
+          border:1px solid var(--line); font-size:14px; color:var(--muted); }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--muted); display:inline-block; }
   .dot.ok { background:var(--ok); } .dot.warn { background:var(--warn); }
+  .grid { display:grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap:16px; align-items:start; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:var(--shadow); margin-bottom:16px; }
+  .card h2 { font-size:17px; margin:0 0 12px; }
+  .scene { position:relative; width:100%; aspect-ratio:1/1; border-radius:14px; overflow:hidden; background:#1a2a14; }
+  .scene canvas { width:100%; height:100%; display:block; image-rendering:auto; }
+  .live { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.55); color:#fff; font-size:12px; font-weight:600;
+          padding:3px 8px; border-radius:999px; letter-spacing:.04em; }
+  .live::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:#ff4a4a; margin-right:6px; vertical-align:1px; }
+  .bubble { position:absolute; left:50%; top:12%; transform:translateX(-50%); max-width:78%; background:rgba(255,255,255,.93);
+            color:#30260e; padding:8px 14px; border-radius:16px; font-size:15px; text-align:center; transition:opacity .4s; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .bubble.hide { opacity:0; }
+  .loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#e8f0dc; font-size:15px; }
+  .mood { font-size:18px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 12px; font-size:14px; }
+  .gauge { margin:10px 0; }
+  .gauge .top { display:flex; justify-content:space-between; font-size:14px; }
+  .gauge .bar { height:10px; border-radius:5px; background:var(--line); overflow:hidden; margin-top:4px; }
+  .gauge .bar i { display:block; height:100%; border-radius:5px; transition:width .6s; }
+  .alerts { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  /* ⚫ AJOUTÉ (25/10/2026) : bouton du son sur la scène */
+  .sndbtn { position:absolute; right:10px; bottom:10px; padding:6px 10px; font-size:13px; background:rgba(255,255,255,.85); }
+  /* ⚫ AJOUTÉ (25/10/2026) : boutons de commandes */
+  .cmds { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; margin-top:14px; }
+  .cmds.games { margin-top:8px; }
+  .cmds.games:not(:empty)::before { content:'Jeux'; grid-column:1 / -1; font-size:13px; opacity:.7; }
+  .cmds button { padding:10px 6px; font-size:14px; }
+  .alert { font-size:13px; padding:4px 10px; border-radius:999px; background:#fff1e0; color:#8a4a10; border:1px solid #f2d3a8; }
+  @media (prefers-color-scheme: dark) { .alert { background:#3a2a14; color:#f6c88a; border-color:#5a4220; } }
   label { display:block; font-size:14px; color:var(--muted); margin:12px 0 4px; }
-  input, select { width:100%; font-size:16px; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); }
+  input { width:100%; font-size:16px; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); }
+  /* ⚫ AJOUTÉ (25/10/2026) : réglages de l'IA */
+  select { width:100%; font-size:16px; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--ink); }
+  .help { font-size:14px; line-height:1.5; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:10px; }
+  .help ol { margin:6px 0 0 18px; padding:0; }
+  .help code { font-size:13px; }
+  .help:empty { display:none; }
   button { font-size:16px; padding:11px 16px; border-radius:10px; border:0; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
   button.ghost { background:transparent; color:var(--accent); border:1px solid var(--line); }
-  button:disabled { opacity:.5; }
+  button.danger { background:#b3261e; }
+  button:disabled { opacity:.5; cursor:default; }
   .actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .species { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px; }
+  .sp { border:2px solid var(--line); border-radius:14px; padding:8px; text-align:center; cursor:pointer; background:var(--bg); }
+  .sp canvas { width:100%; height:88px; object-fit:contain; display:block; }
+  .sp.sel { border-color:var(--accent); background:var(--card); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .sp span { font-weight:600; font-size:15px; }
   .nets { list-style:none; margin:8px 0 0; padding:0; }
   .nets li { display:flex; justify-content:space-between; align-items:center; padding:10px 8px; border-top:1px solid var(--line); cursor:pointer; border-radius:8px; }
   .nets li:hover, .nets li.sel { background:var(--bg); }
   .bars { font-family:monospace; color:var(--muted); }
   .msg { min-height:1.4em; margin-top:10px; font-size:14px; }
-  .msg.err { color:var(--accent); } .msg.ok { color:var(--ok); }
-  .gauge { margin:8px 0; }
-  .gauge .top { display:flex; justify-content:space-between; font-size:14px; }
-  .gauge .bar { height:8px; border-radius:4px; background:var(--line); overflow:hidden; margin-top:3px; }
-  .gauge .bar i { display:block; height:100%; border-radius:4px; }
+  .msg.err { color:#c0392b; } .msg.ok { color:var(--ok); }
   .eye { display:flex; gap:8px; } .eye input { flex:1; } .eye button { padding:0 12px; }
+  .hidden { display:none !important; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:4px 0; }
+  .row span:first-child { color:var(--muted); }
 </style>
 </head>
 <body>
 <main>
-  <h1 id="title">Animal de compagnie</h1>
-  <p class="sub">Configuration de la carte</p>
+  <header>
+    <h1 id="title">Animal de compagnie</h1>
+    <span class="chip" id="moodChip">…</span>
+    <span class="chip" id="wifiChip"><span class="dot"></span>WiFi</span>
+  </header>
 
-  <section class="card">
-    <h2>Connexion WiFi</h2>
-    <div class="row"><span>Réseau de la carte</span><b id="ap">…</b></div>
-    <div class="row"><span>WiFi de la maison</span><span id="sta"><span class="dot"></span>…</span></div>
-    <div class="row"><span>Adresse IP</span><span id="ip">—</span></div>
+  <!-- Adoption : affichée tant qu'aucun animal n'est adopté -->
+  <section class="card hidden" id="adoptCard">
+    <h2>Adopte ton animal</h2>
+    <p class="sub">Choisis ton compagnon et donne-lui un nom. <b>Le nom et l'espèce ne pourront plus être changés</b>
+      sans tout réinitialiser.</p>
+    <div class="species" id="species"></div>
+    <label for="petName">Son nom (16 caractères au plus)</label>
+    <input id="petName" maxlength="16" autocomplete="off" placeholder="Kiko">
+    <div class="actions"><button id="adopt">Adopter</button></div>
+    <div class="msg" id="adoptMsg"></div>
   </section>
 
-  <section class="card">
-    <h2>Choisir le WiFi de la maison</h2>
-    <button class="ghost" id="scan">Rechercher les réseaux</button>
-    <ul class="nets" id="nets"></ul>
-    <label for="ssid">Nom du réseau</label>
-    <input id="ssid" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <label for="pass">Mot de passe</label>
-    <div class="eye">
-      <input id="pass" type="password" maxlength="64" autocomplete="off">
-      <button class="ghost" id="show" type="button" aria-label="Afficher le mot de passe">Voir</button>
-    </div>
-    <div class="actions">
-      <button id="save">Enregistrer et connecter</button>
-      <button class="ghost" id="forget">Oublier ce WiFi</button>
-    </div>
-    <div class="msg" id="msg"></div>
-  </section>
+  <div class="grid">
+    <section class="card">
+      <div class="scene">
+        <canvas id="scene" width="480" height="480"></canvas>
+        <span class="live">EN DIRECT</span>
+        <!-- ⚫ AJOUTÉ (25/10/2026) : sons (joués par ce téléphone / PC : appairez-le à une enceinte Bluetooth) -->
+        <button class="ghost sndbtn" id="sndBtn" type="button">🔇 Activer le son</button>
+        <div class="bubble hide" id="bubble"></div>
+        <div class="loading" id="loading">Chargement des images…</div>
+      </div>
+    </section>
 
-  <section class="card">
-    <h2 id="petTitle">Le chien</h2>
-    <div class="row"><span>Humeur</span><span id="mood">…</span></div>
-    <div class="row"><span>Âge</span><span id="age">…</span></div>
-    <div id="gauges"></div>
-  </section>
+    <section class="card" id="statsCard">
+      <h2 id="petTitle">—</h2>
+      <p class="mood" id="mood">…</p>
+      <p class="sub" id="age">…</p>
+      <div id="gauges"></div>
+      <div class="alerts" id="alerts"></div>
+      <!-- ⚫ AJOUTÉ (25/10/2026) : commandes (comme le menu de l'encodeur) -->
+      <div class="cmds" id="cmds"></div>
+      <div class="cmds games" id="games"></div>
+      <div class="msg" id="cmdMsg"></div>
+    </section>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>WiFi de la maison</h2>
+      <div class="row"><span>Réseau de la carte</span><b id="ap">…</b></div>
+      <div class="row"><span>WiFi de la maison</span><span id="sta">…</span></div>
+      <div class="row"><span>Adresse IP</span><span id="ip">—</span></div>
+      <div class="actions"><button class="ghost" id="scan">Rechercher les réseaux</button></div>
+      <ul class="nets" id="nets"></ul>
+      <label for="ssid">Nom du réseau</label>
+      <input id="ssid" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <label for="pass">Mot de passe</label>
+      <div class="eye">
+        <input id="pass" type="password" maxlength="64" autocomplete="off">
+        <button class="ghost" id="show" type="button">Voir</button>
+      </div>
+      <div class="actions">
+        <button id="save">Enregistrer et connecter</button>
+        <button class="ghost" id="forget">Oublier ce WiFi</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </section>
+
+    <!-- ⚫ AJOUTÉ (25/10/2026) : IA du comportement -->
+    <section class="card" id="aiCard">
+      <h2>Intelligence artificielle</h2>
+      <p class="sub">Facultatif. Une IA gratuite fait vivre l'animal : elle choisit ce qu'il fait (flâner, renifler,
+        jouer seul, se reposer, s'abriter, bouder, observer), lui fait <b>réclamer</b> un câlin, à manger, à boire, à jouer
+        ou à sortir (répondez dans les 90 s : il est ravi), et lui fait faire de temps en temps une <b>bêtise</b> (creuser,
+        renverser une gamelle ; au plus une toutes les 10 min, rare s'il est discipliné). Elle commente dans la bulle.
+        Les règles du jeu restent prioritaires : faim, soif, besoins, pluie, sommeil.</p>
+      <label for="aiProv">Service</label>
+      <select id="aiProv">
+        <option value="0">Désactivée</option>
+        <option value="1">Google Gemini (recommandé)</option>
+        <option value="2">Groq</option>
+        <option value="3">OpenRouter</option>
+        <option value="4">Ollama (PC de la maison)</option>
+      </select>
+      <div id="aiHelp" class="help"></div>
+      <div id="aiKeyRow">
+        <label for="aiKey">Clé API</label>
+        <div class="eye">
+          <input id="aiKey" type="password" maxlength="200" autocomplete="off" spellcheck="false">
+          <button class="ghost" id="aiShow" type="button">Voir</button>
+        </div>
+      </div>
+      <label for="aiModel">Modèle</label>
+      <input id="aiModel" maxlength="63" autocomplete="off" spellcheck="false">
+      <div id="aiUrlRow">
+        <label for="aiUrl">Adresse du service</label>
+        <input id="aiUrl" maxlength="95" autocomplete="off" spellcheck="false">
+      </div>
+      <label for="aiPer">Un appel toutes les … minutes (et après chaque action, 1 par minute au plus)</label>
+      <input id="aiPer" type="number" min="3" max="120" value="5">
+      <div class="actions">
+        <button id="aiSave">Enregistrer</button>
+        <button class="ghost" id="aiTest">Tester maintenant</button>
+      </div>
+      <div class="row"><span>Dernière réponse</span><span id="aiLast">—</span></div>
+      <div class="msg" id="aiMsg"></div>
+    </section>
+
+    <!-- ⚫ AJOUTÉ (25/10/2026) : météo réelle et position -->
+    <section class="card" id="wxCard">
+      <h2>Météo et heure</h2>
+      <p class="mood" id="wxNow">…</p>
+      <div class="row"><span>Lieu</span><span id="wxPlace">—</span></div>
+      <div class="row"><span>Heure locale</span><span id="wxClock">—</span></div>
+      <div class="row"><span>Soleil</span><span id="wxSun">—</span></div>
+      <div class="row"><span>Nuages / vent</span><span id="wxCloud">—</span></div>
+      <label for="city">Changer la position (ville)</label>
+      <div class="eye">
+        <input id="city" maxlength="60" autocomplete="off" spellcheck="false" placeholder="ex. Lyon">
+        <button class="ghost" id="citySearch" type="button">Chercher</button>
+      </div>
+      <ul class="nets" id="cities"></ul>
+      <div class="actions"><button class="ghost" id="wxAuto">Position automatique (Internet)</button></div>
+      <div class="msg" id="wxMsg"></div>
+    </section>
+
+    <section class="card">
+      <h2>Réinitialiser</h2>
+      <p class="sub">Efface toutes les données de l'animal (nom, espèce, âge, jauges, cour). Le WiFi de la maison est conservé.
+        Il faudra adopter un nouvel animal.</p>
+      <button class="danger" id="reset">Tout réinitialiser</button>
+      <div class="msg" id="resetMsg"></div>
+    </section>
+  </div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-const msg = (t, cls) => { $('msg').textContent = t; $('msg').className = 'msg ' + (cls || ''); };
+const msg = (el, t, cls) => { $(el).textContent = t; $(el).className = 'msg ' + (cls || ''); };
+const post = (url, data) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                          body: new URLSearchParams(data || {}) }).then(r => r.json());
 
-async function status() {
-  try {
-    const s = await (await fetch('/api/status')).json();
-    $('ap').textContent = s.ap;
-    const dot = s.connected ? 'ok' : (s.configured ? 'warn' : '');
-    const txt = s.connected ? 'Connecté à ' + s.ssid + ' (' + s.rssi + ' dBm)'
-              : s.configured ? 'Connexion à ' + s.ssid + '…' : 'Aucun';
-    $('sta').innerHTML = '<span class="dot ' + dot + '"></span>' + esc(txt);
-    $('ip').textContent = s.connected ? s.ip : '—';
-    if (s.configured && !$('ssid').value) $('ssid').value = s.ssid;
-  } catch (e) { /* la carte redémarre ou le téléphone a quitté le réseau */ }
+/* ---------- images du pack (décodées une fois, en cache) ---------- */
+let PACK = null;
+const imgs = new Map(), pending = new Map();
+
+function decode(e, buf) {
+  const [w, h, , , cf] = e, d = new Uint8Array(buf), c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d'), id = ctx.createImageData(w, h), px = id.data;
+  const rgb = v => [((v >> 11) & 31) * 255 / 31, ((v >> 5) & 63) * 255 / 63, (v & 31) * 255 / 31];
+  if (cf === 2) {           // 256 couleurs : palette BGRA puis index
+    for (let i = 0; i < w * h; i++) {
+      const k = d[1024 + i] * 4;
+      px[i * 4] = d[k + 2]; px[i * 4 + 1] = d[k + 1]; px[i * 4 + 2] = d[k]; px[i * 4 + 3] = d[k + 3];
+    }
+  } else if (cf === 3) {    // ⚫ AJOUTÉ (25/10/2026) : 256 couleurs compressé (plages transparentes)
+    let q = 1024, i = 0;
+    while (q < d.length && i < w * h) {
+      const b = d[q++], n = (b & 0x7F) + 1;
+      for (let j = 0; j < n && i < w * h; j++, i++) {
+        if (b & 0x80) continue;
+        const k = d[q++] * 4;
+        px[i * 4] = d[k + 2]; px[i * 4 + 1] = d[k + 1]; px[i * 4 + 2] = d[k]; px[i * 4 + 3] = d[k + 3];
+      }
+    }
+  } else {
+    const bpp = cf === 1 ? 3 : 2;
+    for (let i = 0; i < w * h; i++) {
+      const [r, g, b] = rgb(d[i * bpp] | (d[i * bpp + 1] << 8));
+      px[i * 4] = r; px[i * 4 + 1] = g; px[i * 4 + 2] = b; px[i * 4 + 3] = cf === 1 ? d[i * bpp + 2] : 255;
+    }
+  }
+  ctx.putImageData(id, 0, 0);
+  return c;
 }
 
-const GAUGES = [['food','Faim','#ff8a2a'],['water','Soif','#38b8ff'],['energy','Énergie','#f0c020'],
-                ['joy','Bonheur','#ff4a8a'],['discipline','Discipline','#a070ff'],['health','Santé','#30c060']];
+function getImg(i) {
+  if (imgs.has(i)) return imgs.get(i);
+  if (!pending.has(i) && PACK) {
+    pending.set(i, fetch('/api/img?i=' + i + '&v=' + PACK.v).then(r => r.arrayBuffer())
+      .then(b => { imgs.set(i, decode(PACK.e[i], b)); pending.delete(i); })
+      .catch(() => pending.delete(i)));
+  }
+  return null;
+}
+
+const tintCache = new Map();
+function tinted(i, c) {   // la nuit : teinte bleutée, comme à l'écran
+  if (tintCache.has(i)) return tintCache.get(i);
+  const t = document.createElement('canvas'); t.width = c.width; t.height = c.height;
+  const x = t.getContext('2d'); x.drawImage(c, 0, 0);
+  x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(10,20,64,.5)'; x.fillRect(0, 0, t.width, t.height);
+  tintCache.set(i, t); return t;
+}
+
+/* ---------- la cour en direct ---------- */
+const cv = $('scene'), ctx = cv.getContext('2d');
+let scene = null, shown = new Map(), lastScene = 0;
+
+async function pollScene() {
+  try {
+    scene = await (await fetch('/api/scene', { cache: 'no-store' })).json();
+    // ⚫ AJOUTÉ (25/10/2026) : nouveau son à jouer (le premier reçu n'est pas joué : il date d'avant l'ouverture)
+    if (scene.snd) { if (lastSnd !== null && scene.snd[0] !== lastSnd && scene.son) play(scene.snd[1], scene.sp, scene.vol); lastSnd = scene.snd[0]; }
+    lastScene = performance.now();
+    const b = $('bubble');
+    if (scene.msg) { b.textContent = scene.msg; b.classList.remove('hide'); } else b.classList.add('hide');
+  } catch (e) {}
+  setTimeout(pollScene, 140);
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  if (!scene || !PACK) return;
+  let missing = false;
+  const seen = new Set();
+  for (const o of scene.o) {
+    const slot = o[0];
+    seen.add(slot);
+    let s = shown.get(slot);
+    const tx = typeof o[1] === 'string' ? o[2] : o[3], ty = typeof o[1] === 'string' ? o[3] : o[4];
+    if (!s || s.k !== (typeof o[1] === 'string' ? 't' : 'i')) { s = { x: tx, y: ty, k: typeof o[1] === 'string' ? 't' : 'i' }; shown.set(slot, s); }
+    // lissage entre deux copies de la scène (déplacements fluides)
+    const jump = Math.abs(tx - s.x) + Math.abs(ty - s.y) > 120;
+    s.x = jump ? tx : s.x + (tx - s.x) * 0.35;
+    s.y = jump ? ty : s.y + (ty - s.y) * 0.35;
+    s.o = o;
+  }
+  for (const k of [...shown.keys()]) if (!seen.has(k)) shown.delete(k);
+
+  ctx.clearRect(0, 0, 480, 480);
+  for (const o of scene.o) {
+    const s = shown.get(o[0]);
+    if (typeof o[1] === 'string') {        // effet : cœur, étoile, Z, !, ?
+      const [, k, , , opa, col] = o;
+      ctx.globalAlpha = opa / 255;
+      ctx.fillStyle = col;
+      ctx.font = 'bold 40px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      // ctx.fillText(k === 'heart' ? '❤' : k === 'star' ? '★' : k, s.x, s.y);
+      // ⚫ MODIFIÉ (25/10/2026) : bulles de pensée de l'écran
+      const EMO = { heart: '❤', star: '★', feed: '🍖', drink: '💧', potty: '🚽', tired: '🌙', sad: '🌧️', sick: '🤒', grumpy: '☁️', hurt: '💔' };
+      ctx.fillText(EMO[k] || k, s.x, s.y);
+      continue;
+    }
+    const [, idx, left, , , opa] = o;
+    let c = getImg(idx);
+    if (!c) { missing = true; continue; }
+    if (scene.night && !PACK.noTint.has(idx)) c = tinted(idx, c);
+    ctx.globalAlpha = opa / 255;
+    if (left) { ctx.save(); ctx.translate(Math.round(s.x) + c.width, Math.round(s.y)); ctx.scale(-1, 1); ctx.drawImage(c, 0, 0); ctx.restore(); }
+    else ctx.drawImage(c, Math.round(s.x), Math.round(s.y));
+  }
+  ctx.globalAlpha = 1;
+  // ⚫ AJOUTÉ (25/10/2026) : brouillard et éclair, comme à l'écran
+  if (scene.fog) { ctx.fillStyle = 'rgba(216,222,228,0.3)'; ctx.fillRect(0, 0, 480, 480); }
+  if (scene.flash) { ctx.fillStyle = 'rgba(255,255,255,' + (scene.flash / 255) + ')'; ctx.fillRect(0, 0, 480, 480); }
+  $('loading').classList.toggle('hidden', !missing || imgs.size > 8);
+}
+
+/* ---------- état de l'animal ---------- */
+const GAUGES = [['food','🍖','Faim','#ff8a2a'],['water','💧','Soif','#38b8ff'],['energy','⚡','Énergie','#f0c020'],
+                ['potty','🚽','Besoins','#c08a40'],['joy','❤️','Bonheur','#ff4a8a'],['discipline','🎓','Discipline','#a070ff'],
+                ['health','➕','Santé','#30c060']];
+let petState = null;
+let lastHseq = null, hAt = 0;   // ⚫ AJOUTÉ (25/10/2026)
+
 async function pet() {
   try {
-    const p = await (await fetch('/api/pet')).json();
+    const p = petState = await (await fetch('/api/pet', { cache: 'no-store' })).json();
+    $('adoptCard').classList.toggle('hidden', p.adopted);
+    $('reset').disabled = !p.adopted;
+    if (!p.adopted) {
+      $('title').textContent = 'Animal de compagnie';
+      $('moodChip').textContent = 'En attente d’adoption';
+      $('petTitle').textContent = 'Aucun animal';
+      $('mood').textContent = 'Adopte ton compagnon ci-dessus.';
+      $('age').textContent = ''; $('gauges').innerHTML = ''; $('alerts').innerHTML = '';
+      return;
+    }
     $('title').textContent = p.name;
-    $('petTitle').textContent = p.name;
-    $('mood').textContent = p.name + ' ' + p.mood;
+    $('petTitle').textContent = p.name + ' · ' + p.speciesLabel;
+    $('moodChip').textContent = p.name + ' ' + p.mood;
+    $('mood').textContent = p.sound + ' ! ' + p.name + ' ' + p.mood + (p.sleeping ? ' 💤' : '');
     const a = p.age, age = a < 3600 ? Math.floor(a / 60) + ' min' : a < 86400 ? Math.floor(a / 3600) + ' h ' + String(Math.floor(a % 3600 / 60)).padStart(2, '0')
                                     : Math.floor(a / 86400) + ' j ' + Math.floor(a % 86400 / 3600) + ' h';
-    $('age').textContent = p.stage + ', ' + age;
-    $('gauges').innerHTML = GAUGES.map(([k, n, c]) =>
-      '<div class="gauge"><div class="top"><span>' + n + '</span><span>' + p[k] + ' %</span></div>' +
+    $('age').textContent = p.stage + ', ' + age + ' · bien-être ' + p.wellbeing + ' %';
+    $('gauges').innerHTML = GAUGES.map(([k, ic, n, c]) =>
+      '<div class="gauge"><div class="top"><span>' + ic + ' ' + n + '</span><span>' + p[k] + ' %</span></div>' +
       '<div class="bar"><i style="width:' + p[k] + '%;background:' + c + '"></i></div></div>').join('');
+    const al = [];
+    if (p.holes) al.push(p.holes + (p.holes > 1 ? ' trous' : ' trou') + ' dans la pelouse');
+    if (p.poops) al.push(p.poops + ' besoin' + (p.poops > 1 ? 's' : '') + ' à ramasser');
+    if (p.foodTipped) al.push('gamelle de croquettes renversée');
+    if (p.waterTipped) al.push('gamelle d’eau renversée');
+    if (p.potty >= 70) al.push(p.name + ' veut sortir faire ses besoins');
+    // ⚫ AJOUTÉ (25/10/2026) : maladie, cônes renversés
+    if (p.sick) al.unshift('🤒 ' + p.name + ' est malade (' + ['', 'a pris froid', 'coup de chaleur', 'a trop mangé'][p.sick] + ') : Soigner, puis repos à l’abri');
+    if (p.cones) al.push((p.cones === 3 ? '2 cônes renversés' : 'cône renversé') + ' sur la piste');
+    // ⚫ AJOUTÉ (25/10/2026) : dernière perte de santé (affichée 30 s) : puni / grondé sans raison, bêtise, accident
+    if (p.hseq !== lastHseq) { if (lastHseq !== null && p.hseq) hAt = Date.now(); lastHseq = p.hseq; }
+    if (hAt && Date.now() - hAt < 30000) al.unshift('❤️‍🩹 Santé ' + p.health + ' % (' + p.hdelta + ') : ' + p.hwhy);
+    $('alerts').innerHTML = al.map(t => '<span class="alert">' + esc(t) + '</span>').join('');
   } catch (e) {}
 }
 
+/* ---------- adoption ---------- */
+let chosen = -1;
+async function species() {
+  try {
+    const list = await (await fetch('/api/species')).json();
+    $('species').innerHTML = list.map(s => '<div class="sp" data-id="' + s.id + '"><canvas width="160" height="110" data-img="' + s.img + '"></canvas><span>' + esc(s.label) + '</span></div>').join('');
+    document.querySelectorAll('.sp').forEach(el => el.onclick = () => {
+      document.querySelectorAll('.sp').forEach(x => x.classList.remove('sel'));
+      el.classList.add('sel'); chosen = +el.dataset.id;
+    });
+    const paint = () => {   // vignettes : la pose "debout" de chaque espèce
+      let todo = false;
+      document.querySelectorAll('.sp canvas').forEach(c => {
+        const im = getImg(+c.dataset.img);
+        if (!im) { todo = true; return; }
+        const x = c.getContext('2d'), k = Math.min(c.width / im.width, c.height / im.height);
+        x.clearRect(0, 0, c.width, c.height);
+        x.drawImage(im, (c.width - im.width * k) / 2, (c.height - im.height * k) / 2, im.width * k, im.height * k);
+      });
+      if (todo) setTimeout(paint, 300);
+    };
+    paint();
+  } catch (e) {}
+}
+$('adopt').onclick = async () => {
+  const name = $('petName').value.trim();
+  if (chosen < 0) { msg('adoptMsg', 'Choisis une espèce.', 'err'); return; }
+  if (!name) { msg('adoptMsg', 'Donne-lui un nom.', 'err'); return; }
+  $('adopt').disabled = true;
+  try {
+    const r = await post('/api/adopt', { name, species: chosen });
+    msg('adoptMsg', r.ok ? 'Bienvenue ' + name + ' !' : (r.msg || 'Erreur'), r.ok ? 'ok' : 'err');
+    setTimeout(pet, 1500);
+  } catch (e) { msg('adoptMsg', 'La carte ne répond pas.', 'err'); }
+  $('adopt').disabled = false;
+};
+
+$('reset').onclick = async () => {
+  const n = petState && petState.name ? petState.name : 'l’animal';
+  if (!confirm('Effacer toutes les données de ' + n + ' ? Cette action est définitive.')) return;
+  try { await post('/api/reset'); msg('resetMsg', 'Données effacées. Adopte un nouvel animal.', 'ok'); setTimeout(pet, 1500); }
+  catch (e) { msg('resetMsg', 'La carte ne répond pas.', 'err'); }
+};
+
+/* ---------- ⚫ AJOUTÉ (25/10/2026) : sons de l'animal (synthèse Web Audio, sans fichier) ---------- */
+// La carte envoie dans la scène le dernier son à jouer (numéro, sorte) ; la page le synthétise selon l'espèce.
+let AC = null, master = null, sndOn = false, lastSnd = null;
+try { sndOn = localStorage.getItem('snd') === '1'; } catch (e) {}
+function sndUi() { $('sndBtn').textContent = sndOn ? '🔊 Son activé' : '🔇 Activer le son'; }
+$('sndBtn').onclick = () => {
+  sndOn = !sndOn;
+  try { localStorage.setItem('snd', sndOn ? '1' : '0'); } catch (e) {}
+  if (sndOn && !AC) { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.connect(AC.destination); }
+  if (AC && AC.state === 'suspended') AC.resume();
+  sndUi();
+  if (sndOn && scene) play('happy', scene.sp, scene.vol);
+};
+sndUi();
+// briques : oscillateur avec courbe de hauteur, bruit filtré
+function tone(type, t0, dur, f0, f1, gain, opt) {
+  opt = opt || {};
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t0);
+  if (opt.mid) o.frequency.linearRampToValueAtTime(opt.mid, t0 + dur * 0.4);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+  let node = o;
+  if (opt.vib) {   // vibrato (bêlement, hennissement)
+    const l = AC.createOscillator(), lg = AC.createGain();
+    l.frequency.value = opt.vib; lg.gain.value = opt.vibDepth || f0 * 0.08;
+    l.connect(lg); lg.connect(o.frequency); l.start(t0); l.stop(t0 + dur);
+  }
+  if (opt.bp) { const f = AC.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = opt.bp; f.Q.value = opt.q || 2; node.connect(f); node = f; }
+  if (opt.lp) { const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = opt.lp; node.connect(f); node = f; }
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + Math.min(0.04, dur * 0.2));
+  g.gain.setValueAtTime(gain, t0 + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  node.connect(g); g.connect(master);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+}
+function noise(t0, dur, gain, type, freq, q, am) {
+  const len = Math.ceil(AC.sampleRate * dur), buf = AC.createBuffer(1, len, AC.sampleRate), ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = buf; f.type = type; f.frequency.value = freq; f.Q.value = q || 1;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(gain, t0 + Math.min(0.03, dur * 0.2));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  if (am) {   // modulation d'amplitude (ronronnement, ronflement)
+    const l = AC.createOscillator(), lg = AC.createGain();
+    l.frequency.value = am; lg.gain.value = gain * 0.9; l.connect(lg); lg.connect(g.gain); l.start(t0); l.stop(t0 + dur);
+  }
+  src.connect(f); f.connect(g); g.connect(master);
+  src.start(t0); src.stop(t0 + dur);
+}
+// voix de chaque espèce (0 chien, 1 chat, 2 mouton, 3 chèvre, 4 cheval, 5 cochon, 6 vache, 7 âne, 8 lapin, 9 lama)
+// mood : happy (joyeux, plusieurs fois), soft (doux / câlin), short (bref, refus), call (appelle), angry, whine (plainte)
+function voice(sp, mood, t) {
+  const n = mood === 'happy' ? 2 : mood === 'angry' ? 3 : 1, hi = mood === 'happy' ? 1.12 : mood === 'whine' ? 1.25 : 1;
+  for (let i = 0; i < n; i++) {
+    const t0 = t + i * (sp === 0 ? 0.22 : 0.55);
+    switch (sp) {
+    case 0:   // chien : aboiement (bruit + ton qui tombe) ; plainte = gémissement
+      if (mood === 'whine' || mood === 'soft') { tone('sine', t0, 0.9, 900 * hi, 520, 0.25, { mid: 1100 }); break; }
+      noise(t0, 0.12, 0.5, 'bandpass', 1300, 1.2); tone('sawtooth', t0, 0.16, 520 * hi, 260, 0.35, { bp: 900, q: 1.5 }); break;
+    case 1:   // chat : miaou ; câlin = ronronnement
+      if (mood === 'soft') { noise(t0, 1.6, 0.35, 'lowpass', 300, 1, 24); break; }
+      tone('sawtooth', t0, 0.75, 480 * hi, 420, 0.25, { mid: 820 * hi, bp: 1200, q: 3 }); break;
+    case 2:   // mouton : bêêê (vibrato)
+      tone('sawtooth', t0, 0.8, 300 * hi, 280, 0.25, { vib: 7, vibDepth: 22, bp: 800, q: 2 }); break;
+    case 3:   // chèvre : mêêê plus aigu, chevrotant
+      tone('sawtooth', t0, 0.7, 440 * hi, 400, 0.22, { vib: 11, vibDepth: 40, bp: 1100, q: 2 }); break;
+    case 4:   // cheval : hennissement (glissé descendant, fort vibrato)
+      tone('sawtooth', t0, 1.1, 950 * hi, 360, 0.2, { vib: 9, vibDepth: 70, bp: 1400, q: 1.5 }); noise(t0 + 0.9, 0.3, 0.15, 'lowpass', 500); break;
+    case 5:   // cochon : groin groin
+      tone('sawtooth', t0, 0.18, 170 * hi, 130, 0.35, { bp: 900, q: 4 }); tone('sawtooth', t0 + 0.22, 0.16, 180 * hi, 140, 0.3, { bp: 950, q: 4 }); break;
+    case 6:   // vache : meuh grave
+      tone('sawtooth', t0, 1.4, 120 * hi, 95, 0.32, { mid: 135, lp: 650 }); break;
+    case 7:   // âne : hi-han
+      tone('sawtooth', t0, 0.35, 720 * hi, 650, 0.22, { bp: 1300, q: 2 }); tone('sawtooth', t0 + 0.38, 0.45, 230, 200, 0.3, { bp: 600, q: 2 }); break;
+    case 8:   // lapin : petit couic + tapement de patte
+      tone('sine', t0, 0.12, 1800 * hi, 1500, 0.18); noise(t0 + 0.15, 0.08, 0.3, 'lowpass', 180); break;
+    default:  // lama : fredonnement
+      tone('sine', t0, 1.0, 230 * hi, 215, 0.3, { vib: 5, vibDepth: 6 }); tone('triangle', t0, 1.0, 460 * hi, 430, 0.08);
+    }
+  }
+}
+function play(kind, sp, vol) {
+  if (!sndOn || !AC) return;
+  master.gain.value = [0, 0.35, 0.65, 1][vol || 2];
+  const t = AC.currentTime + 0.02;
+  switch (kind) {
+  case 'eat':   for (let i = 0; i < 6; i++) noise(t + i * 0.32 + Math.random() * 0.05, 0.07, 0.35, 'highpass', 2500); break;   // croque
+  case 'drink': for (let i = 0; i < 9; i++) noise(t + i * 0.17, 0.05, 0.3, 'bandpass', 1600 + Math.random() * 600, 6); break;   // lape
+  case 'snore': noise(t, 1.6, 0.25, 'lowpass', 380, 1, 3); break;                                                      // ronfle
+  case 'dig':   for (let i = 0; i < 4; i++) noise(t + i * 0.13, 0.09, 0.3, 'bandpass', 1400, 1.5); break;               // gratte
+  case 'cough': noise(t, 0.18, 0.45, 'bandpass', 650, 1.5); noise(t + 0.3, 0.15, 0.35, 'bandpass', 600, 1.5); break;   // tousse
+  case 'yawn':  tone('sawtooth', t, 1.2, 260, 180, 0.18, { mid: 520, lp: 900 }); break;                                   // bâille
+  default:      voice(sp, kind, t);
+  }
+}
+
+/* ---------- ⚫ AJOUTÉ (25/10/2026) : IA ---------- */
+const AI_HELP = [
+  '',
+  '<b>Google Gemini</b> : gratuit (quota quotidien), bon en français.<ol>' +
+    '<li>Ouvrez <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> et connectez-vous avec un compte Google.</li>' +
+    '<li>Cliquez « Create API key » (« Créer une clé API »), copiez la clé (elle commence par <code>AIza</code>).</li>' +
+    '<li>Collez-la ci-dessous. Modèle : laissez vide (<code>gemini-flash-latest</code>, toujours le Flash actuel) ou <code>gemini-flash-lite-latest</code> (plus de requêtes gratuites).</li></ol>',
+  '<b>Groq</b> : gratuit, très rapide.<ol>' +
+    '<li>Créez un compte sur <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a>.</li>' +
+    '<li>« Create API Key », copiez la clé (elle commence par <code>gsk_</code>).</li>' +
+    '<li>Modèle conseillé : <code>llama-3.1-8b-instant</code> (liste : console.groq.com/docs/models).</li></ol>',
+  '<b>OpenRouter</b> : certains modèles sont gratuits (nom finissant par <code>:free</code>, quota quotidien limité).<ol>' +
+    '<li>Créez un compte sur <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>, « Create Key », copiez la clé (<code>sk-or-</code>…).</li>' +
+    '<li>Choisissez un modèle gratuit sur <a href="https://openrouter.ai/models?q=free" target="_blank">openrouter.ai/models?q=free</a> et copiez son nom, par ex. <code>meta-llama/llama-3.3-70b-instruct:free</code>.</li></ol>',
+  '<b>Ollama</b> : gratuit et privé, tourne sur un PC de la maison (il doit rester allumé).<ol>' +
+    '<li>Installez Ollama : <a href="https://ollama.com/download" target="_blank">ollama.com/download</a>.</li>' +
+    '<li>Téléchargez un modèle : <code>ollama pull llama3.2</code> (petit et rapide ; <code>qwen2.5:3b</code> marche aussi).</li>' +
+    '<li>Autorisez l’accès depuis le réseau : variable d’environnement <code>OLLAMA_HOST=0.0.0.0</code>, puis relancez Ollama ' +
+    '(Windows : Paramètres système &gt; Variables d’environnement ; autorisez le port 11434 dans le pare-feu).</li>' +
+    '<li>Adresse du service : <code>http://IP-du-PC:11434</code> (IP du PC : <code>ipconfig</code>). Pas de clé.</li></ol>',
+];
+let aiCfg = null;
+function aiForm() {
+  const p = +$('aiProv').value;
+  $('aiHelp').innerHTML = AI_HELP[p];
+  $('aiKeyRow').classList.toggle('hidden', p === 0 || p === 4);
+  $('aiUrlRow').classList.toggle('hidden', p !== 4);
+  if (aiCfg) {
+    $('aiModel').placeholder = aiCfg.defaults[p] || '';
+    $('aiKey').placeholder = aiCfg.provider === p && aiCfg.hasKey ? 'clé enregistrée (…' + aiCfg.keyTail + ') : laisser vide pour la garder' : 'collez la clé ici';
+  }
+  if (p === 4 && !$('aiUrl').value) $('aiUrl').placeholder = 'http://192.168.0.10:11434';
+}
+async function aiLoad(first) {
+  try {
+    const c = aiCfg = await (await fetch('/api/ai', { cache: 'no-store' })).json();
+    if (first) {
+      $('aiProv').value = c.provider; $('aiModel').value = c.model; $('aiUrl').value = c.url; $('aiPer').value = c.period;
+    }
+    aiForm();
+    const ago = s => s < 60 ? s + ' s' : Math.round(s / 60) + ' min';
+    $('aiLast').textContent = !c.provider ? '—' : c.ok ? '« ' + c.phrase + ' » (' + c.behaviour + ', il y a ' + ago(c.age) + ')'
+                            : c.error ? '⚠️ ' + c.error : c.calls ? '…' : 'pas encore d’appel';
+  } catch (e) {}
+}
+$('aiProv').onchange = () => { $('aiModel').value = ''; aiForm(); };
+$('aiShow').onclick = () => { const k = $('aiKey'); k.type = k.type === 'password' ? 'text' : 'password'; $('aiShow').textContent = k.type === 'password' ? 'Voir' : 'Cacher'; };
+$('aiSave').onclick = async () => {
+  try {
+    const r = await post('/api/ai', { provider: $('aiProv').value, key: $('aiKey').value.trim(), model: $('aiModel').value.trim(),
+                                      url: $('aiUrl').value.trim(), period: $('aiPer').value });
+    msg('aiMsg', r.ok ? 'Enregistré. Premier appel dans quelques secondes…' : 'Erreur', r.ok ? 'ok' : 'err');
+    $('aiKey').value = '';
+    setTimeout(() => aiLoad(false), 8000);
+  } catch (e) { msg('aiMsg', 'La carte ne répond pas.', 'err'); }
+};
+$('aiTest').onclick = async () => {
+  msg('aiMsg', 'Appel en cours…');
+  try { await post('/api/ai/test'); } catch (e) {}
+  setTimeout(() => { aiLoad(false); msg('aiMsg', ''); }, 9000);
+};
+
+/* ---------- ⚫ AJOUTÉ (25/10/2026) : commandes ---------- */
+const CMD_ICON = { 'Manger':'🍖', 'Boire':'💧', 'Dormir':'🌙', 'Besoins':'🚽', 'Nettoyer':'🧹', 'Caresser':'🤚',
+  'Gronder':'☝️', 'Punir':'💔', 'Réconforter':'🤗', 'Soigner':'💊', 'Courir':'🏃', 'Balle':'🎾', 'Frisbee':'🥏', 'Os à ronger':'🦴',
+  'Oiseaux':'🐦', 'Pelote':'🧶', 'Plume':'🪶', 'Obstacle':'🚧', 'Carotte':'🥕', 'Bain de boue':'🟫', 'Grimper':'⛰️',
+  'Brossage':'🪮', 'Brouter':'🌿' };
+let cmdKey = '';
+async function actions() {
+  try {
+    const list = await (await fetch('/api/actions', { cache: 'no-store' })).json();
+    const key = JSON.stringify(list);
+    if (key === cmdKey) return;
+    cmdKey = key;
+    const btn = c => '<button class="ghost" data-a="' + c.a + '">' + (CMD_ICON[c.t] || '•') + ' ' + esc(c.t) + '</button>';
+    $('cmds').innerHTML = list.filter(c => !c.g).map(btn).join('');
+    $('games').innerHTML = list.filter(c => c.g).map(btn).join('');
+    document.querySelectorAll('.cmds button').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const r = await post('/api/action', { a: b.dataset.a });
+        msg('cmdMsg', r.ok ? '' : (r.msg || 'Erreur'), r.ok ? '' : 'err');
+      } catch (e) { msg('cmdMsg', 'La carte ne répond pas.', 'err'); }
+      setTimeout(() => { b.disabled = false; pet(); }, 900);
+    });
+  } catch (e) {}
+}
+
+/* ---------- ⚫ AJOUTÉ (25/10/2026) : météo et position ---------- */
+const WX_ICON = ['❔', '☀️', '⛅', '☁️', '🌫️', '🌦️', '🌧️', '🌨️', '⛈️'];
+async function weather() {
+  try {
+    const w = await (await fetch('/api/weather', { cache: 'no-store' })).json();
+    const ic = w.kind === 1 && w.tod === 'nuit' ? '🌙' : WX_ICON[w.kind] || '❔';
+    $('wxNow').textContent = w.valid ? ic + ' ' + w.text + ', ' + Math.round(w.temp) + ' °C' + (w.tod ? ' · ' + w.tod : '')
+                                     : 'Pas encore de météo (la carte doit être sur le WiFi de la maison).';
+    $('wxPlace').textContent = (w.place || (w.valid ? w.lat.toFixed(2) + ', ' + w.lon.toFixed(2) : '—')) + (w.valid ? (w.auto ? ' (auto)' : ' (choisi)') : '');
+    $('wxClock').textContent = w.clock || '—';
+    $('wxSun').textContent = w.valid ? '↑ ' + w.sunrise + '   ↓ ' + w.sunset : '—';
+    $('wxCloud').textContent = w.valid ? w.clouds + ' % · ' + w.wind + ' km/h' : '—';
+  } catch (e) {}
+}
+// ⚫ MODIFIÉ (25/10/2026) : propositions dès 2 lettres (pendant la frappe), messages selon la cause
+let geoTimer = 0, geoSeq = 0;
+$('city').oninput = () => {
+  clearTimeout(geoTimer);
+  if ($('city').value.trim().length >= 2) geoTimer = setTimeout(() => $('citySearch').onclick(true), 450);
+  else { $('cities').innerHTML = ''; msg('wxMsg', ''); }
+};
+$('citySearch').onclick = async (auto) => {
+  const q = $('city').value.trim();
+  if (q.length < 2) { msg('wxMsg', 'Saisissez au moins 2 lettres.', 'err'); return; }
+  const seq = ++geoSeq;
+  msg('wxMsg', 'Recherche de « ' + q + ' »…');
+  try {
+    const list = await (await fetch('/api/geo?q=' + encodeURIComponent(q))).json();
+    if (seq !== geoSeq) return;   // une frappe plus récente a relancé la recherche
+    if (!Array.isArray(list)) {
+      msg('wxMsg', list.error === 'offline' ? 'La carte n’est pas connectée au WiFi de la maison : recherche impossible pour l’instant.'
+                                            : 'Le service de recherche ne répond pas, réessayez dans un instant.', 'err');
+      $('cities').innerHTML = ''; return;
+    }
+    msg('wxMsg', list.length ? 'Choisissez la ville :' : 'Aucune ville ne correspond à « ' + q + ' ».', list.length ? '' : 'err');
+    $('cities').innerHTML = list.map((c, i) => '<li data-i="' + i + '"><span>' + esc(c.name) + '</span><span class="sub">' +
+                                     esc([c.admin, c.country].filter(Boolean).join(', ')) + '</span></li>').join('');
+    document.querySelectorAll('#cities li').forEach(li => li.onclick = async () => {
+      const c = list[+li.dataset.i];
+      const r = await post('/api/location', { lat: c.lat, lon: c.lon, name: c.name });
+      msg('wxMsg', r.ok ? 'Position enregistrée : ' + c.name + '. Météo mise à jour dans un instant.' : (r.msg || 'Erreur'), r.ok ? 'ok' : 'err');
+      $('cities').innerHTML = ''; setTimeout(weather, 4000);
+    });
+  } catch (e) { msg('wxMsg', 'La carte ne répond pas.', 'err'); }
+};
+$('city').onkeydown = e => { if (e.key === 'Enter') $('citySearch').onclick(); };
+$('wxAuto').onclick = async () => {
+  try {
+    const r = await post('/api/location', { auto: 1 });
+    msg('wxMsg', r.ok ? 'Position automatique (d\'après la connexion Internet).' : 'Erreur', r.ok ? 'ok' : 'err');
+    setTimeout(weather, 5000);
+  } catch (e) { msg('wxMsg', 'La carte ne répond pas.', 'err'); }
+};
+
+/* ---------- WiFi ---------- */
+async function status() {
+  try {
+    const s = await (await fetch('/api/status', { cache: 'no-store' })).json();
+    $('ap').textContent = s.ap;
+    const dot = s.connected ? 'ok' : (s.configured ? 'warn' : '');
+    // const txt = s.connected ? 'Connecté à ' + s.ssid + ' (' + s.rssi + ' dBm)' : s.configured ? 'Connexion à ' + s.ssid + '…' : 'Aucun';
+    // ⚫ MODIFIÉ (25/10/2026) : raison de l'échec (mot de passe refusé, réseau introuvable)
+    const why = [15, 204, 205, 2, 23].includes(s.reason) ? ' (mot de passe refusé ?)' : [201, 200].includes(s.reason) ? ' (réseau introuvable)' : '';
+    const txt = s.connected ? 'Connecté à ' + s.ssid + ' (' + s.rssi + ' dBm)' : s.configured ? 'Connexion à ' + s.ssid + '…' + why : 'Aucun';
+    $('sta').innerHTML = '<span class="dot ' + dot + '"></span> ' + esc(txt);
+    $('ip').textContent = s.connected ? s.ip : '—';
+    $('wifiChip').innerHTML = '<span class="dot ' + dot + '"></span>' + (s.connected ? esc(s.ssid) : 'WiFi maison : aucun');
+    if (s.configured && !$('ssid').value) $('ssid').value = s.ssid;
+  } catch (e) {}
+}
 $('scan').onclick = async () => {
   $('scan').disabled = true; $('scan').textContent = 'Recherche…';
   try {
@@ -124,32 +701,45 @@ $('scan').onclick = async () => {
       document.querySelectorAll('#nets li').forEach(x => x.classList.remove('sel'));
       li.classList.add('sel'); $('ssid').value = li.dataset.s; $('pass').focus();
     });
-  } catch (e) { msg('Recherche impossible, réessayez.', 'err'); }
+  } catch (e) { msg('msg', 'Recherche impossible, réessayez.', 'err'); }
   $('scan').disabled = false; $('scan').textContent = 'Rechercher les réseaux';
 };
-
 $('show').onclick = () => { const p = $('pass'); p.type = p.type === 'password' ? 'text' : 'password'; $('show').textContent = p.type === 'password' ? 'Voir' : 'Cacher'; };
-
 $('save').onclick = async () => {
   const ssid = $('ssid').value.trim();
-  if (!ssid) { msg('Choisissez ou saisissez un réseau.', 'err'); return; }
-  $('save').disabled = true; msg('Enregistrement…');
+  if (!ssid) { msg('msg', 'Choisissez ou saisissez un réseau.', 'err'); return; }
+  $('save').disabled = true; msg('msg', 'Enregistrement…');
   try {
-    const r = await (await fetch('/api/wifi', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ ssid, pass: $('pass').value }) })).json();
-    msg(r.ok ? 'Enregistré. Connexion en cours…' : (r.msg || 'Erreur'), r.ok ? 'ok' : 'err');
-  } catch (e) { msg('La carte ne répond pas.', 'err'); }
+    const r = await post('/api/wifi', { ssid, pass: $('pass').value });
+    msg('msg', r.ok ? 'Enregistré. Connexion en cours…' : (r.msg || 'Erreur'), r.ok ? 'ok' : 'err');
+  } catch (e) { msg('msg', 'La carte ne répond pas.', 'err'); }
   $('save').disabled = false; setTimeout(status, 3000);
 };
-
 $('forget').onclick = async () => {
   if (!confirm('Oublier le WiFi de la maison ?')) return;
-  await fetch('/api/forget', { method: 'POST' }); $('ssid').value = ''; $('pass').value = '';
-  msg('WiFi oublié.', 'ok'); status();
+  await post('/api/forget'); $('ssid').value = ''; $('pass').value = '';
+  msg('msg', 'WiFi oublié.', 'ok'); status();
 };
 
-status(); pet();
-setInterval(status, 4000); setInterval(pet, 5000);
+/* ---------- démarrage ---------- */
+(async () => {
+  try {
+    PACK = await (await fetch('/api/pack')).json();
+    // pas de teinte de nuit pour le ciel, les lucioles, les nuages, le papillon, les oiseaux (comme à l'écran)
+    // PACK.noTint = new Set((PACK.names || []).map((n, i) => /^(bg_|firefly|cloud|fly_|bird_)/.test(n) ? i : -1).filter(i => i >= 0));
+    // ⚫ MODIFIÉ (25/10/2026) : + pluie, neige, abri (déjà dessinés pour l'heure)
+    PACK.noTint = new Set((PACK.names || []).map((n, i) => /^(bg_|firefly|cloud|fly_|bird_|drop|splash|flake|shelter_)/.test(n) ? i : -1).filter(i => i >= 0));
+  } catch (e) {}
+  // species(); pet(); status(); pollScene(); draw();
+  // setInterval(pet, 3000); setInterval(status, 5000);
+  // species(); pet(); status(); weather(); pollScene(); draw();   // ⚫ MODIFIÉ (25/10/2026) : + météo
+  // setInterval(pet, 3000); setInterval(status, 5000); setInterval(weather, 30000);
+  // species(); pet(); status(); weather(); actions(); pollScene(); draw();   // ⚫ MODIFIÉ (25/10/2026) : + commandes
+  // setInterval(pet, 3000); setInterval(status, 5000); setInterval(weather, 30000); setInterval(actions, 10000);
+  species(); pet(); status(); weather(); actions(); aiLoad(true); pollScene(); draw();   // ⚫ MODIFIÉ (25/10/2026) : + IA
+  setInterval(pet, 3000); setInterval(status, 5000); setInterval(weather, 30000); setInterval(actions, 10000);
+  setInterval(() => aiLoad(false), 20000);
+})();
 </script>
 </body>
 </html>
