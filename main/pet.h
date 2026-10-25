@@ -137,6 +137,9 @@ typedef struct {
     uint8_t cones_down;
     uint8_t sick;                         // pet_sick_t
     uint32_t sick_s;
+    // ⚫ AJOUTÉ (25/10/2026) : heure réelle (UTC, s depuis 1970) de la dernière sauvegarde : au redémarrage, une
+    // fois l'heure synchronisée, le temps passé carte éteinte est rattrapé (âge, repousse, guérison, jauges)
+    uint32_t saved_epoch;
 } pet_t;
 
 // ⚫ AJOUTÉ (25/10/2026) : causes de maladie

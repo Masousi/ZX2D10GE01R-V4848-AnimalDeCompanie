@@ -28,6 +28,7 @@
 #include "nvs.h"
 #include "sdkconfig.h"
 #include <math.h>
+#include <time.h>            // ⚫ AJOUTÉ (25/10/2026) : heure réelle
 #include <stddef.h>          // ⚫ AJOUTÉ (25/10/2026) : offsetof            // ⚫ AJOUTÉ (25/10/2026) : lroundf
 #include "pet.h"
 #include "weather.h"         // ⚫ AJOUTÉ (25/10/2026) : froid, chaleur
@@ -90,7 +91,8 @@ static uint32_t s_naughty_acc;   // secondes de jeu depuis le dernier tirage de 
 static uint32_t s_cry_s;         // durée des pleurs en cours
 static uint32_t s_save_acc;      // secondes réelles depuis la dernière sauvegarde
 static int s_save_in = -1;       // ⚫ AJOUTÉ (25/10/2026) : sauvegarde différée (secondes restantes, -1 = aucune)
-static char s_msg[96];
+// static char s_msg[96];
+static char s_msg[160];   // ⚫ MODIFIÉ (25/10/2026) : résumé de l'absence plus long
 static uint32_t s_mess_ver;      // ⚫ AJOUTÉ (25/10/2026)
 static int16_t s_pos_x = 240, s_pos_y = 338;   // ⚫ AJOUTÉ (25/10/2026) : position de l'animal à l'écran
 // ⚫ AJOUTÉ (25/10/2026) : environnement réel
@@ -262,8 +264,15 @@ static void add_spot(pet_spot_t *list, uint8_t *n, uint8_t max, pet_spot_t p)
     s_mess_ver++;
 }
 
+// ⚫ AJOUTÉ (25/10/2026) : heure réelle connue (NTP) ? ; temps carte éteinte déjà rattrapé ?
+static bool clock_ok(void) { return time(NULL) > 1700000000; }
+static bool s_offline_done;
+
 static void pet_save(void)
 {
+    // ⚫ AJOUTÉ (25/10/2026) : heure de la sauvegarde (seulement si l'heure est sûre et le rattrapage fait : sinon
+    // on garderait une heure fausse et l'absence serait perdue)
+    if (clock_ok() && s_offline_done) s_pet.saved_epoch = (uint32_t)time(NULL);
     nvs_handle_t h;
     if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
     pet_save_t sv = { .magic = SAVE_MAGIC, .pet = s_pet };
@@ -317,10 +326,182 @@ static void set_msg(const char *fmt, const char *name)
     snprintf(s_msg, sizeof(s_msg), fmt, name);
 }
 
+// ⚫ MODIFIÉ (25/10/2026) : ancienne version du rattrapage (jauges "au repos", au plus 6 h), remplacée par la
+// simulation complète ci-dessous :
+// // ⚫ AJOUTÉ (25/10/2026) : rattrape le temps passé carte éteinte (une fois, dès que l'heure est synchronisée) :
+// // âge complet (il grandit), trous qui se recouvrent de gazon, maladie qui guérit ; jauges comme s'il s'était
+// // reposé (au plus 6 h simulées : il ne revient pas mourant après un week-end)
+// static bool offline_catch_up(void)
+// {
+//     s_offline_done = true;
+//     uint32_t now = (uint32_t)time(NULL);
+//     if (!s_pet.saved_epoch || now <= s_pet.saved_epoch + 60) return false;
+//     uint32_t away = now - s_pet.saved_epoch;
+//     if (away > 400u * 86400) away = 400u * 86400;   // horloge aberrante : borne
+//     uint32_t game = away * CONFIG_PET_TIME_SCALE;
+//     s_pet.age_s += game;
+//     // (trous rebouchés : la repousse se calcule sur age_s, qui vient d'avancer ; ceux qui ont fini de repousser
+//     // disparaissent au prochain tick)
+//     if (s_pet.sick) {
+//         s_pet.sick_s = s_pet.sick_s > game ? s_pet.sick_s - game : 0;
+//         if (!s_pet.sick_s) s_pet.sick = PET_SICK_NONE;
+//     }
+//     float sim = game > 6 * 3600 ? 6 * 3600 : (float)game;
+//     pet_stats_t *s = &s_pet.s;
+//     s->food   -= FOOD_DECAY / 2 * sim;
+//     s->water  -= WATER_DECAY / 2 * sim;
+//     s->joy    -= JOY_DECAY * 0.3f * sim;
+//     s->potty  += POTTY_FILL / 2 * sim;
+//     s->energy += ENERGY_RECOVER * 0.2f * sim;
+//     s->discipline -= DISC_DECAY * sim;
+//     if (s->food < 8) s->food = 8;
+//     if (s->water < 8) s->water = 8;
+//     if (s->potty > 90) s->potty = 90;
+//     s_pet.crying = false;
+//     s_pet.naughty = false;
+//     clamp_all();
+//     s_mess_ver++;
+//     char t[40];
+//     if (away >= 86400) snprintf(t, sizeof(t), "%lu j %lu h", (unsigned long)(away / 86400), (unsigned long)(away % 86400 / 3600));
+//     else if (away >= 3600) snprintf(t, sizeof(t), "%lu h %02lu", (unsigned long)(away / 3600), (unsigned long)(away % 3600 / 60));
+//     else snprintf(t, sizeof(t), "%lu min", (unsigned long)(away / 60));
+//     snprintf(s_msg, sizeof(s_msg), "%s a vécu %s sans toi : il a grandi, il a faim et soif !", s_pet.name, t);
+//     ESP_LOGI(TAG, "Carte éteinte pendant %lu s : âge %lu s (%s)", (unsigned long)away, (unsigned long)s_pet.age_s,
+//              pet_stage_text(pet_stage()));
+//     return true;
+// }
+
+// ⚫ AJOUTÉ (25/10/2026) : rattrape le temps passé carte éteinte, de façon réaliste : l'animal a vécu sans
+// personne, par pas de 10 min de jeu, avec le jour et la nuit du lieu :
+// - la nuit il dort (énergie), le jour il vit (faim, soif, ennui : il se sent seul) ;
+// - il mange et boit dans ses gamelles tant qu'il en reste (2 repas, 3 lapées ; rien si elle est renversée) ;
+// - besoins : au coin gravier s'il est assez discipliné et que le gravier n'est pas plein, sinon sur la pelouse ;
+// - bêtises (selon discipline et âge) : creuser (ou finir un trou), renverser une gamelle, renverser un cône ;
+// - santé : baisse à jeun, assoiffé ou au milieu de ses besoins (jamais sous 5 %) ; maladie qui guérit ;
+// - âge complet (il grandit), trous rebouchés qui se recouvrent de gazon (sur l'âge).
+static uint32_t s_offline_wait;   // secondes depuis la synchro de l'heure (on attend la météo pour le soleil)
+
+static bool offline_catch_up(void)
+{
+    s_offline_done = true;
+    uint32_t now = (uint32_t)time(NULL);
+    if (!s_pet.saved_epoch || now <= s_pet.saved_epoch + 60) return false;
+    uint32_t away = now - s_pet.saved_epoch;
+    if (away > 60u * 86400) away = 60u * 86400;   // borne (horloge aberrante, très longue absence)
+    weather_t w;
+    weather_get(&w);
+    int rise = w.valid ? w.sunrise_min : 7 * 60, set = w.valid ? w.sunset_min : 20 * 60;
+    int32_t utc = w.valid ? w.utc_offset : 0;
+    const int DT = 600;   // pas de 10 min de jeu
+    uint32_t steps = away * CONFIG_PET_TIME_SCALE / DT;
+    pet_stats_t *s = &s_pet.s;
+    int food_res = s_pet.food_tipped ? 0 : 2, water_res = s_pet.water_tipped ? 0 : 3;
+    int meals = 0, drinks = 0, new_holes = 0, tipped_f = 0, tipped_w = 0, cones = 0, lawn = 0, gravel = 0;
+    for (uint32_t k = 0; k < steps; k++) {
+        const age_k_t *ak = &AK;
+        uint32_t real = s_pet.saved_epoch + (uint32_t)((uint64_t)k * DT / CONFIG_PET_TIME_SCALE);
+        int minute = (int)(((int64_t)real + utc) % 86400 / 60);
+        bool night = minute < rise || minute > set;
+        bool sleep = night || s->energy < 15;
+        if (sleep) {
+            s->food -= FOOD_DECAY / 2 * ak->food * DT;
+            s->water -= WATER_DECAY / 2 * ak->water * DT;
+            s->potty += POTTY_FILL / 2 * ak->potty * DT;
+            s->energy += ENERGY_RECOVER * ak->recover * DT;
+        } else {
+            s->food -= FOOD_DECAY * ak->food * DT;
+            s->water -= WATER_DECAY * ak->water * DT;
+            s->potty += POTTY_FILL * ak->potty * DT;
+            s->energy -= ENERGY_DECAY * ak->energy * DT;
+            s->joy -= JOY_DECAY * ak->joy * 1.3f * DT;   // seul : il s'ennuie
+            s->discipline -= DISC_DECAY * DT;
+            // gamelles
+            if (s->food < 40 && food_res > 0 && !s_pet.food_tipped) { s->food += 30; s->potty += 10; food_res--; meals++; }
+            if (s->water < 40 && water_res > 0 && !s_pet.water_tipped) { s->water += 35; s->potty += 15; water_res--; drinks++; }
+            // bêtises (probabilité par pas : comme en jeu, une par minute au plus sur 10 min tirée une fois)
+            uint32_t pm = (uint32_t)((50 + (100 - s->discipline) * 4) * ak->naughty);
+            if (!s_pet.sick && esp_random() % 1000 < pm) {
+                uint32_t r = esp_random() % 100;
+                if (r < 20 && !s_pet.food_tipped) { s_pet.food_tipped = true; food_res = 0; tipped_f++; }
+                else if (r < 35 && !s_pet.water_tipped) { s_pet.water_tipped = true; water_res = 0; tipped_w++; }
+                else if (r < 45 && s_pet.cones_down != 3) { s_pet.cones_down |= (s_pet.cones_down & 1) ? 2 : 1; cones++; }
+                else {   // creuse : finit un trou commencé, sinon en commence un (4 au plus)
+                    int i = -1;
+                    for (int j = 0; j < s_pet.n_holes; j++) if (!s_pet.hole_filled[j] && s_pet.hole_dig[j] < 100 && j != s_pet.bone_hole) i = j;
+                    if (i < 0 && s_pet.n_holes < PET_MAX_HOLES) { pet_spot_t sp = rand_spot(); i = hole_add(sp.x, sp.y, 10); new_holes++; }
+                    if (i >= 0) s_pet.hole_dig[i] = s_pet.hole_dig[i] + 45 > 100 ? 100 : s_pet.hole_dig[i] + 45;
+                    s->health -= 1;   // terre mangée
+                }
+            }
+        }
+        // besoins
+        if (s->potty >= 90) {
+            s->potty = 0;
+            if (s->discipline >= ak->auto_potty && s_pet.toilet_poops < 3) { s_pet.toilet_poops++; gravel++; }
+            else {
+                pet_spot_t sp = rand_spot();
+                add_spot(s_pet.poops, &s_pet.n_poops, PET_MAX_POOPS, sp);
+                s->discipline -= 3;
+                lawn++;
+            }
+        }
+        // santé
+        s->health -= POOP_HEALTH * s_pet.n_poops * DT;
+        if (s->food <= 0 || s->water <= 0) s->health -= HEALTH_DECAY * 0.15f * DT;
+        else if (s->food > 40 && s->water > 40 && s->joy > 40) s->health += HEALTH_RECOVER * DT;
+        if (s_pet.sick) {
+            uint32_t d = sleep ? 2 * DT : DT;
+            s_pet.sick_s = s_pet.sick_s > d ? s_pet.sick_s - d : 0;
+            if (!s_pet.sick_s) s_pet.sick = PET_SICK_NONE;
+        }
+        clamp_all();
+        if (s->health < 5) s->health = 5;
+        s_pet.age_s += DT;
+        // trous rebouchés qui ont fini de repousser
+        for (int i = s_pet.n_holes - 1; i >= 0; i--)
+            if (s_pet.hole_filled[i] && s_pet.age_s - s_pet.hole_filled[i] >= PET_REGROW_S && i != s_pet.bone_hole) hole_remove(i);
+    }
+    s_pet.age_s += away * CONFIG_PET_TIME_SCALE % DT;
+    s_pet.crying = false;
+    s_pet.naughty = false;
+    int minute_now = (int)(((int64_t)now + utc) % 86400 / 60);
+    s_pet.sleeping = (minute_now < rise || minute_now > set) && s->energy < 95;
+    s_mess_ver++;
+    // résumé de l'absence
+    char t[24];
+    if (away >= 86400) snprintf(t, sizeof(t), "%lu j %lu h", (unsigned long)(away / 86400), (unsigned long)(away % 86400 / 3600));
+    else if (away >= 3600) snprintf(t, sizeof(t), "%lu h %02lu", (unsigned long)(away / 3600), (unsigned long)(away % 3600 / 60));
+    else snprintf(t, sizeof(t), "%lu min", (unsigned long)(away / 60));
+    int o = 0;
+    // ajout borné (snprintf renvoie la longueur voulue, pas celle écrite)
+#define ADD(...) do { if (o < (int)sizeof(s_msg) - 1) { o += snprintf(s_msg + o, sizeof(s_msg) - o, __VA_ARGS__); if (o > (int)sizeof(s_msg) - 1) o = sizeof(s_msg) - 1; } } while (0)
+    ADD("%s d'absence :", t);
+    if (meals || drinks) ADD(" gamelles %s,", (food_res || water_res) ? "entamées" : "vidées");
+    if (new_holes) ADD(" %d trou%s,", new_holes, new_holes > 1 ? "s" : "");
+    if (tipped_f || tipped_w) ADD(" gamelle renversée,");
+    if (cones) ADD(" cône à terre,");
+    if (lawn) ADD(" %d besoin%s dans la cour,", lawn, lawn > 1 ? "s" : "");
+    if (o > 0 && s_msg[o - 1] == ',') s_msg[o - 1] = '.';
+    else ADD(" %s t'attendait.", s_pet.name);
+#undef ADD
+    ESP_LOGI(TAG, "Carte éteinte %lu s : %lu pas, repas %d, eau %d, trous %d, besoins cour %d / gravier %d, âge %lu s (%s)",
+             (unsigned long)away, (unsigned long)steps, meals, drinks, new_holes, lawn, gravel, (unsigned long)s_pet.age_s,
+             pet_stage_text(pet_stage()));
+    ESP_LOGI(TAG, "%s", s_msg);
+    return true;
+}
+
 bool pet_tick(uint32_t dt_s)
 {
     bool event = false;
     if (!s_pet.adopted) return false;   // ⚫ AJOUTÉ (25/10/2026) : le temps ne passe qu'après l'adoption
+    // if (!s_offline_done && clock_ok()) {   // ⚫ AJOUTÉ (25/10/2026)
+    weather_t w0;
+    weather_get(&w0);
+    if (!s_offline_done && clock_ok() && (w0.valid || ++s_offline_wait > 90)) {   // ⚫ MODIFIÉ (25/10/2026) : + soleil du lieu
+        event = offline_catch_up();
+        if (event) s_save_in = 3;          // sauvegarde de l'état rattrapé (et de la nouvelle heure)
+    }
     for (uint32_t n = 0; n < dt_s * CONFIG_PET_TIME_SCALE; n++) {   // pas de 1 s de jeu
         pet_stats_t *s = &s_pet.s;
         s_pet.age_s++;
@@ -993,6 +1174,7 @@ bool pet_adopt(const char *name, int species)
     if (s_pet.adopted || !name || !name[0] || species < 0 || species >= PET_SPECIES_COUNT) return false;
     pet_new();
     s_pet.adopted = true;
+    s_offline_done = true;   // ⚫ AJOUTÉ (25/10/2026) : nouvel animal : rien à rattraper
     s_pet.species = (uint8_t)species;
     strlcpy(s_pet.name, name, sizeof(s_pet.name));
     s_mess_ver++;

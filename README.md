@@ -150,6 +150,14 @@ Chaque âge a ses propres images (proportions différentes, pas une simple rédu
   chaleur (> 30 °C)**, en restant plus de 10 min **sous la pluie** sans s'abriter, en plein soleil trop longtemps, ou
   quand il **mange de trop**. Malade : il tousse, reste couché, perd de la santé, refuse de jouer ; il guérit en
   20 à 40 min de jeu (deux fois plus vite s'il dort ou est à l'abri), plus vite avec **Soigner**.
+- **Carte éteinte** <!-- ⚫ AJOUTÉ (25/10/2026) --> : l'heure réelle est enregistrée à chaque sauvegarde. Au
+  redémarrage, dès que l'heure est synchronisée (WiFi de la maison), l'absence est rattrapée : l'animal a **vécu
+  sans vous**, par pas de 10 min, avec le jour et la nuit du lieu. Il a dormi la nuit, s'est ennuyé le jour, a mangé
+  et bu dans ses gamelles tant qu'il en restait (2 repas, 3 lapées ; rien si une gamelle est renversée), fait ses
+  besoins au gravier s'il est assez discipliné (sinon sur la pelouse), fait des bêtises (trous, gamelles, cônes).
+  Il a **grandi** du temps écoulé, les trous rebouchés ont repoussé, une maladie a guéri ; sa santé a baissé s'il a
+  eu faim, soif ou vécu au milieu de ses besoins (jamais sous 5 %). Un résumé s'affiche dans la bulle
+  (« 2 j 3 h d'absence : gamelles vidées, 2 trous, 3 besoins dans la cour. »). Absence comptée jusqu'à 60 jours.
 - S'il pleure et que personne ne le console, il boude (bonheur −10).
 - L'état est **sauvegardé en flash** (NVS) toutes les 5 min et quand il s'endort (une coupure de courant fait
   perdre au plus 5 min de jeu ; chaque écriture flash perturbe brièvement l'écran, d'où leur rareté). Une sauvegarde
