@@ -3,8 +3,8 @@
 #pragma once
 
 #define PET_PACK_MAGIC     0x41544550u   // 'PETA'
-#define PET_PACK_COUNT     1366
-#define PET_PACK_SIZE      14165240
+#define PET_PACK_COUNT     1371
+#define PET_PACK_SIZE      14196088
 
 // Décor et accessoires : X(nom, index dans le pack)
 #define PET_ASSETS(X) \
@@ -141,7 +141,7 @@
 
 // ⚫ AJOUTÉ (25/10/2026) : sons (MP3) : X(nom, index dans le pack)
 #define PET_SOUND_BASE     1325
-#define PET_SOUND_COUNT    41
+#define PET_SOUND_COUNT    46
 #define PET_SOUNDS(X) \
     X(act_carrot, 1325) \
     X(act_cough, 1326) \
@@ -156,34 +156,39 @@
     X(cat_kitten, 1335) \
     X(cat_meow1, 1336) \
     X(cat_meow2, 1337) \
-    X(cat_purr, 1338) \
-    X(cat_soft, 1339) \
-    X(cow_1, 1340) \
-    X(cow_2, 1341) \
-    X(cow_3, 1342) \
-    X(dog_bark1, 1343) \
-    X(dog_bark2, 1344) \
-    X(dog_bark3, 1345) \
-    X(dog_growl, 1346) \
-    X(dog_howl, 1347) \
-    X(dog_pant, 1348) \
-    X(dog_small, 1349) \
-    X(dog_whine, 1350) \
-    X(donkey_1, 1351) \
-    X(donkey_2, 1352) \
-    X(goat_1, 1353) \
-    X(goat_2, 1354) \
-    X(goat_young, 1355) \
-    X(horse_call, 1356) \
-    X(horse_cough, 1357) \
-    X(horse_neigh, 1358) \
-    X(horse_snort, 1359) \
-    X(pig_1, 1360) \
-    X(pig_2, 1361) \
-    X(rabbit_1, 1362) \
-    X(sheep_1, 1363) \
-    X(sheep_2, 1364) \
-    X(sheep_3, 1365) \
+    X(cat_meow3, 1338) \
+    X(cat_purr, 1339) \
+    X(cat_soft, 1340) \
+    X(cow_1, 1341) \
+    X(cow_2, 1342) \
+    X(cow_3, 1343) \
+    X(dog_alarm, 1344) \
+    X(dog_bark1, 1345) \
+    X(dog_bark2, 1346) \
+    X(dog_bark3, 1347) \
+    X(dog_bark4, 1348) \
+    X(dog_howl, 1349) \
+    X(dog_old, 1350) \
+    X(dog_pant, 1351) \
+    X(dog_small, 1352) \
+    X(dog_small2, 1353) \
+    X(dog_small3, 1354) \
+    X(dog_whine, 1355) \
+    X(donkey_1, 1356) \
+    X(donkey_2, 1357) \
+    X(goat_1, 1358) \
+    X(goat_2, 1359) \
+    X(goat_young, 1360) \
+    X(horse_call, 1361) \
+    X(horse_cough, 1362) \
+    X(horse_neigh, 1363) \
+    X(horse_snort, 1364) \
+    X(pig_1, 1365) \
+    X(pig_2, 1366) \
+    X(rabbit_1, 1367) \
+    X(sheep_1, 1368) \
+    X(sheep_2, 1369) \
+    X(sheep_3, 1370) \
 
 
 // Gueule de l'animal par espèce et par pose, par rapport à son ancrage (tourné vers la droite)

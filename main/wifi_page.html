@@ -550,30 +550,57 @@ function voice(sp, mood, t) {
 }
 // ⚫ AJOUTÉ (25/10/2026) : vrais enregistrements (pack de la carte, /api/pack -> sounds), décodés une fois.
 // Hauteur selon l'âge (un petit a la voix plus aiguë) ; synthèse seulement si le son manque (lama, lapement).
+// ⚫ MODIFIÉ (25/10/2026) : BUG "bruits bizarres" : tant qu'un enregistrement n'était pas chargé (13 s pour tout le
+// pack), la page jouait la voix synthétisée. Maintenant : chargement par file (sons de l'espèce d'abord), nouvel
+// essai en cas d'échec, et un son pas encore prêt est joué dès son arrivée (au plus 2,5 s plus tard) au lieu
+// d'être remplacé par la synthèse.
 const clips = new Map(), clipLoad = new Map();
-function clip(name) {
-  if (clips.has(name)) return clips.get(name);
+function clipLoadOne(name) {
+  if (clips.has(name)) return Promise.resolve(clips.get(name));
+  if (clipLoad.has(name)) return clipLoad.get(name);
   const idx = PACK && PACK.sounds ? PACK.sounds[name] : undefined;
-  if (idx === undefined || !AC) return null;
-  if (!clipLoad.has(name))
-    clipLoad.set(name, fetch('/api/img?i=' + idx + '&v=' + PACK.v).then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b))
-      .then(buf => { clips.set(name, buf); return buf; }).catch(() => null));
-  return null;
+  if (idx === undefined || !AC) return Promise.resolve(null);
+  const pr = fetch('/api/img?i=' + idx + '&v=' + PACK.v).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+    .then(b => new Promise((ok, ko) => AC.decodeAudioData(b, ok, ko)))
+    .then(buf => { clips.set(name, buf); return buf; })
+    .catch(() => { clipLoad.delete(name); return null; });   // échec : on réessaiera
+  clipLoad.set(name, pr);
+  return pr;
 }
-function preloadClips() { if (PACK && PACK.sounds) Object.keys(PACK.sounds).forEach(clip); }
-function playClip(name, rate, gain, t) {
-  const buf = clip(name);
-  if (!buf) return false;
+function clip(name) { if (clips.has(name)) return clips.get(name); clipLoadOne(name); return null; }
+let preloading = false;
+async function preloadClips() {
+  if (preloading || !PACK || !PACK.sounds || !AC) return;
+  preloading = true;
+  const pre = ['dog', 'cat', 'sheep', 'goat', 'horse', 'pig', 'cow', 'donkey', 'rabbit', 'llama'][scene ? scene.sp : 0] || '';
+  const names = Object.keys(PACK.sounds).sort((a, b) => (b.startsWith(pre) || b.startsWith('act')) - (a.startsWith(pre) || a.startsWith('act')));
+  for (let pass = 0; pass < 3; pass++)   // jusqu'à 3 essais par son, 2 téléchargements à la fois
+    for (let i = 0; i < names.length; i += 2) await Promise.all(names.slice(i, i + 2).filter(n => !clips.has(n)).map(clipLoadOne));
+  preloading = false;
+}
+function startClip(buf, rate, gain, t) {
   const src = AC.createBufferSource(), g = AC.createGain();
   src.buffer = buf; src.playbackRate.value = rate || 1; g.gain.value = gain === undefined ? 1 : gain;
-  src.connect(g); g.connect(master); src.start(t || AC.currentTime);
+  src.connect(g); g.connect(master); src.start(Math.max(t || 0, AC.currentTime));
+}
+// joue l'enregistrement ; s'il n'est pas encore chargé, dès qu'il arrive (sinon rien) ; false si le pack n'en a pas
+function playClip(name, rate, gain, t) {
+  if (!PACK || !PACK.sounds || PACK.sounds[name] === undefined) return false;
+  const buf = clip(name);
+  if (buf) { startClip(buf, rate, gain, t); return true; }
+  const asked = AC.currentTime;
+  clipLoadOne(name).then(b => { if (b && AC.currentTime - asked < 2.5) startClip(b, rate, gain, 0); });
   return true;
 }
 const pick = a => a[Math.floor(Math.random() * a.length)];
 // sons de chaque espèce selon la situation (happy, soft, short, call, angry, whine) ; bébé : petits cris propres
+// const VOICES = [ { happy: ['dog_bark1', 'dog_bark2'], … angry: ['dog_growl'], …, baby: ['dog_small'] }, … ];
+// ⚫ MODIFIÉ (25/10/2026) : nouveaux extraits du chien (choisis au spectrogramme) ; "baby" ne remplace que les cris
+// (joie, appel, bref, colère) : un chiot qui pleure gémit, un chaton câliné ronronne
 const VOICES = [
-  { happy: ['dog_bark1', 'dog_bark2'], soft: ['dog_pant'], short: ['dog_bark3'], call: ['dog_bark3', 'dog_whine'], angry: ['dog_growl'], whine: ['dog_whine', 'dog_howl'], baby: ['dog_small'] },
-  { happy: ['cat_meow1'], soft: ['cat_purr'], short: ['cat_soft'], call: ['cat_meow2', 'cat_meow1'], angry: ['cat_growl'], whine: ['cat_complain'], baby: ['cat_kitten'] },
+  { happy: ['dog_bark1', 'dog_bark2', 'dog_bark4'], soft: ['dog_pant'], short: ['dog_bark3'], call: ['dog_bark3', 'dog_bark1'],
+    angry: ['dog_alarm'], whine: ['dog_whine', 'dog_whine', 'dog_howl'], baby: ['dog_small', 'dog_small2', 'dog_small3'], adult: ['dog_old'] },
+  { happy: ['cat_meow1', 'cat_meow3'], soft: ['cat_purr'], short: ['cat_soft'], call: ['cat_meow2', 'cat_meow3'], angry: ['cat_growl'], whine: ['cat_complain'], baby: ['cat_kitten'] },
   { all: ['sheep_1', 'sheep_2', 'sheep_3'] },
   { all: ['goat_1', 'goat_2'], baby: ['goat_young'] },
   { happy: ['horse_neigh'], soft: ['horse_snort'], short: ['horse_snort'], call: ['horse_call', 'horse_neigh'], angry: ['horse_snort'], whine: ['horse_call'] },
@@ -588,8 +615,11 @@ const AGE_RATE = [1.32, 1.12, 1];
 function realVoice(sp, mood, st, t) {
   const v = VOICES[sp];
   if (!v) return false;
-  let list = (st === 0 && v.baby) || v[mood] || v.all || v.happy;
-  const babyClip = st === 0 && v.baby;
+  // let list = (st === 0 && v.baby) || v[mood] || v.all || v.happy;
+  const cry = mood === 'happy' || mood === 'call' || mood === 'short' || mood === 'angry';
+  let list = (st === 0 && v.baby && cry) ? v.baby : (v[mood] || v.all || v.happy);
+  if (st === 2 && v.adult && mood === 'happy' && Math.random() < 0.35) list = v.adult;   // aboiement plus grave de l'adulte
+  const babyClip = st === 0 && v.baby && cry;
   const rate = (babyClip ? 1 : AGE_RATE[st] || 1) * (mood === 'whine' ? 1.06 : mood === 'angry' ? 0.94 : 1) * (0.97 + Math.random() * 0.06);
   const gain = mood === 'soft' ? 0.7 : mood === 'short' ? 0.8 : 1;
   if (!playClip(pick(list), rate, gain, t)) return false;
@@ -612,6 +642,8 @@ function play(kind, sp, vol, st) {
   case 'drink': break;   // pas d'enregistrement libre de lapement : synthèse
   default:      if (realVoice(sp, kind, st, t)) return;
   }
+  // ⚫ AJOUTÉ (25/10/2026) : la synthèse ne remplace plus un enregistrement qui existe (seulement lama, lapement)
+  if (kind !== 'drink' && VOICES[sp] && !['eat', 'snore', 'dig', 'yawn', 'cough'].includes(kind)) return;
   switch (kind) {
   case 'eat':   for (let i = 0; i < 6; i++) noise(t + i * 0.32 + Math.random() * 0.05, 0.07, 0.35, 'highpass', 2500); break;   // croque
   case 'drink': for (let i = 0; i < 9; i++) noise(t + i * 0.17, 0.05, 0.3, 'bandpass', 1600 + Math.random() * 600, 6); break;   // lape

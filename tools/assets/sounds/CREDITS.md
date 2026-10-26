@@ -6,16 +6,21 @@ Les extraits tirés de fichiers CC BY-SA sont diffusés sous la même licence (C
 
 | Fichier | Enregistrement d'origine | Auteur | Licence |
 |---|---|---|---|
-| `dog_bark1.mp3` | Barking dog #2 | Joseph Sardin, BigSoundBank.com (son n° 2954) | CC0 1.0 |
-| `dog_bark2.mp3` | Barking dog #3 | Joseph Sardin, BigSoundBank.com (son n° 2955) | CC0 1.0 |
-| `dog_bark3.mp3` | Barking dog #1 | Joseph Sardin, BigSoundBank.com (son n° 0916) | CC0 1.0 |
-| `dog_small.mp3` | Small dog barking | Joseph Sardin, BigSoundBank.com (son n° 0612) | CC0 1.0 |
-| `dog_whine.mp3` | Dogs barking and crying #1 | Joseph Sardin, BigSoundBank.com (son n° 1544) | CC0 1.0 |
-| `dog_howl.mp3` | Dog singing #1 | Joseph Sardin, BigSoundBank.com (son n° 2450) | CC0 1.0 |
-| `dog_growl.mp3` | 2 small dogs bark and growl | Joseph Sardin, BigSoundBank.com (son n° 1060) | CC0 1.0 |
+| `dog_bark1.mp3` | Barking dog #2 (double aboiement) | Joseph Sardin, BigSoundBank.com (son n° 2954) | CC0 1.0 |
+| `dog_bark2.mp3` | Barking dog #2 (double aboiement) | Joseph Sardin, BigSoundBank.com (son n° 2954) | CC0 1.0 |
+| `dog_bark3.mp3` | Barking dog #2 (aboiement) | Joseph Sardin, BigSoundBank.com (son n° 2954) | CC0 1.0 |
+| `dog_bark4.mp3` | Barking dog inside | Joseph Sardin, BigSoundBank.com (son n° 0112) | CC0 1.0 |
+| `dog_old.mp3` | Old dog barking #1 (aboiement grave) | Joseph Sardin, BigSoundBank.com (son n° 2352) | CC0 1.0 |
+| `dog_alarm.mp3` | Old dog barking #2 (aboiements en rafale) | Joseph Sardin, BigSoundBank.com (son n° 2353) | CC0 1.0 |
+| `dog_small.mp3` | Small dog barking (jappement) | Joseph Sardin, BigSoundBank.com (son n° 0612) | CC0 1.0 |
+| `dog_small2.mp3` | Small dog barking (jappement) | Joseph Sardin, BigSoundBank.com (son n° 0612) | CC0 1.0 |
+| `dog_small3.mp3` | Small dog barking (jappement) | Joseph Sardin, BigSoundBank.com (son n° 0612) | CC0 1.0 |
+| `dog_whine.mp3` | Dogs barking and crying #1 (gémissements) | Joseph Sardin, BigSoundBank.com (son n° 1544) | CC0 1.0 |
+| `dog_howl.mp3` | Dog singing #2 (hurlement) | Joseph Sardin, BigSoundBank.com (son n° 2451) | CC0 1.0 |
 | `dog_pant.mp3` | Dogs breathing | Joseph Sardin, BigSoundBank.com (son n° 1547) | CC0 1.0 |
 | `cat_meow1.mp3` | Meow cat #2 | Joseph Sardin, BigSoundBank.com (son n° 1890) | CC0 1.0 |
-| `cat_meow2.mp3` | Meow cat #1 | Joseph Sardin, BigSoundBank.com (son n° 1889) | CC0 1.0 |
+| `cat_meow2.mp3` | Meow cat #3 | Joseph Sardin, BigSoundBank.com (son n° 1891) | CC0 1.0 |
+| `cat_meow3.mp3` | Meow cat #1 (miaulement après 1,45 s) | Joseph Sardin, BigSoundBank.com (son n° 1889) | CC0 1.0 |
 | `cat_soft.mp3` | Little meow of a cat #1 | Joseph Sardin, BigSoundBank.com (son n° 0494) | CC0 1.0 |
 | `cat_purr.mp3` | Cat purring #3 | Joseph Sardin, BigSoundBank.com (son n° 1010) | CC0 1.0 |
 | `cat_growl.mp3` | Growling cat #1 | Joseph Sardin, BigSoundBank.com (son n° 1885) | CC0 1.0 |

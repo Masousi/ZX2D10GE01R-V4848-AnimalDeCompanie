@@ -215,7 +215,7 @@ La page :
 
 <!-- ⚫ MODIFIÉ (25/10/2026) : vrais enregistrements (était : voix synthétisées par le navigateur) -->
 La carte n'a pas de haut-parleur : elle envoie à la page, avec la scène, le son à jouer, et la page joue de
-**vrais enregistrements** (41 extraits, 480 Ko, rangés dans le pack d'images et servis par la carte) :
+**vrais enregistrements** (46 extraits, rangés dans le pack d'images et servis par la carte, choisis au spectrogramme) :
 aboiements, grognement, gémissement, hurlement et halètement du chien ; miaulements, ronronnement, feulement et
 plainte du chat ; bêlements du mouton, de la chèvre et du chevreau ; hennissements, ébrouement et toux du cheval ;
 braiment de l'âne ; meuglements ; grognements du cochon ; lapin dans son clapier ; et les bruits d'action
@@ -288,7 +288,7 @@ idf.py -p COM4 -b 921600 build flash monitor
 
 <!-- ⚫ MODIFIÉ (25/10/2026) -->
 <!-- ⚫ MODIFIÉ (25/10/2026) : pack de 13,4 Mo, ~3 min ; mise à jour de l'application seule -->
-`idf.py flash` écrit aussi le **pack d'images** `assets/pet_assets.bin` (1 325 images + 41 sons, 14,2 Mo) dans la partition
+`idf.py flash` écrit aussi le **pack d'images** `assets/pet_assets.bin` (1 325 images + 46 sons, 14,2 Mo) dans la partition
 `assets` (environ 3 min). Il conserve l'animal, le WiFi, la position et les réglages de l'IA (NVS). Si seul le code a
 changé, l'application suffit (~20 s) :
 
@@ -309,7 +309,7 @@ Journal série attendu au démarrage :
 IA: IA : Google Gemini                                 (ou "Désactivée")
 PET: Animal rechargé (âge … s)                         (ou "PET: Aucun animal adopté : en attente (page web)")
 ASSETS: Fonds en PSRAM : 4356 Ko (PSRAM libre : 1524 Ko)
-ASSETS: Pack : 1366 images, 13833 Ko                   (images + sons)
+ASSETS: Pack : 1371 images, 13863 Ko                   (images + sons)
 ASSETS: Animal 0, âge 0 : 42 poses, tampon 64 Ko
 WIFI: Réseau de configuration : AnimalDeCompagnie_WiFi (ouvert), page http://192.168.4.1 ; WiFi maison : <box>
 WIFI: Connecté à <box>, IP 192.168.0.64

@@ -20,17 +20,33 @@ COMMONS = {
 # nom du son : (source, début en s ou None = premier son détecté, durée max en s, description)
 CLIPS = {
     # chien
-    'dog_bark1':    ('bsb:2954', None, 1.2, 'Barking dog #2'),
-    'dog_bark2':    ('bsb:2955', None, 1.4, 'Barking dog #3'),
-    'dog_bark3':    ('bsb:0916', None, 1.0, 'Barking dog #1'),
-    'dog_small':    ('bsb:0612', None, 1.4, 'Small dog barking'),
-    'dog_whine':    ('bsb:1544', None, 2.2, 'Dogs barking and crying #1'),
-    'dog_howl':     ('bsb:2450', None, 2.5, 'Dog singing #1'),
-    'dog_growl':    ('bsb:1060', None, 1.8, '2 small dogs bark and growl'),
+    # ⚫ MODIFIÉ (25/10/2026) : extraits choisis d'après le spectrogramme (début précis) : "le premier son" des
+    # enregistrements donnait parfois un gémissement ou un hurlement au lieu d'un aboiement
+    # 'dog_bark1':    ('bsb:2954', None, 1.2, 'Barking dog #2'),
+    # 'dog_bark2':    ('bsb:2955', None, 1.4, 'Barking dog #3'),
+    # 'dog_bark3':    ('bsb:0916', None, 1.0, 'Barking dog #1'),
+    # 'dog_small':    ('bsb:0612', None, 1.4, 'Small dog barking'),
+    # 'dog_whine':    ('bsb:1544', None, 2.2, 'Dogs barking and crying #1'),
+    # 'dog_howl':     ('bsb:2450', None, 2.5, 'Dog singing #1'),
+    # 'dog_growl':    ('bsb:1060', None, 1.8, '2 small dogs bark and growl'),
+    # 'dog_pant':     ('bsb:1547', None, 2.0, 'Dogs breathing'),
+    'dog_bark1':    ('bsb:2954', 0.0, 0.9, 'Barking dog #2 (double aboiement)'),
+    'dog_bark2':    ('bsb:2954', 2.35, 0.9, 'Barking dog #2 (double aboiement)'),
+    'dog_bark3':    ('bsb:2954', 4.95, 0.6, 'Barking dog #2 (aboiement)'),
+    'dog_bark4':    ('bsb:0112', 0.75, 1.3, 'Barking dog inside'),
+    'dog_old':      ('bsb:2352', 0.2, 0.8, 'Old dog barking #1 (aboiement grave)'),
+    'dog_alarm':    ('bsb:2353', 0.0, 2.2, 'Old dog barking #2 (aboiements en rafale)'),
+    'dog_small':    ('bsb:0612', 0.1, 0.8, 'Small dog barking (jappement)'),
+    'dog_small2':   ('bsb:0612', 1.6, 0.85, 'Small dog barking (jappement)'),
+    'dog_small3':   ('bsb:0612', 3.25, 0.8, 'Small dog barking (jappement)'),
+    'dog_whine':    ('bsb:1544', 1.05, 2.3, 'Dogs barking and crying #1 (gémissements)'),
+    'dog_howl':     ('bsb:2451', 0.0, 2.3, 'Dog singing #2 (hurlement)'),
     'dog_pant':     ('bsb:1547', None, 2.0, 'Dogs breathing'),
     # chat
     'cat_meow1':    ('bsb:1890', None, 1.4, 'Meow cat #2'),
-    'cat_meow2':    ('bsb:1889', None, 1.4, 'Meow cat #1'),
+    # 'cat_meow2':    ('bsb:1889', None, 1.4, 'Meow cat #1'),   (⚫ 25/10/2026 : deux clics, pas un miaulement)
+    'cat_meow2':    ('bsb:1891', 0.0, 1.6, 'Meow cat #3'),
+    'cat_meow3':    ('bsb:1889', 1.45, 1.4, 'Meow cat #1 (miaulement après 1,45 s)'),
     'cat_soft':     ('bsb:0494', None, 1.0, 'Little meow of a cat #1'),
     'cat_purr':     ('bsb:1010', 1.0, 2.6, 'Cat purring #3'),
     'cat_growl':    ('bsb:1885', None, 1.6, 'Growling cat #1'),
